@@ -1,12 +1,20 @@
 -- ==========================================
 -- Unbind default shortcuts being overridden
 -- ==========================================
-hl.unbind("SUPER + SHIFT + C") -- open Hey
-hl.unbind("SUPER + SHIFT + S") -- open google maps
-hl.unbind("SUPER + SHIFT + A") -- open Chatgpt twice
-hl.unbind("SUPER + SHIFT + W") -- open Omwrite
-hl.unbind("SUPER + SHIFT + M") -- install spotify
-hl.unbind("SUPER + SHIFT + G") -- install signal
+hl.unbind("SUPER + SHIFT + C")   -- open Hey
+hl.unbind("SUPER + SHIFT + E")   -- open Hey
+hl.unbind("SUPER + SHIFT + S")   -- open google maps
+hl.unbind("SUPER + SHIFT + A")   -- open Chatgpt twice
+hl.unbind("SUPER + SHIFT + W")   -- open Omwrite
+hl.unbind("SUPER + SHIFT + M")   -- install spotify
+hl.unbind("SUPER + SHIFT + G")   -- install signal
+hl.unbind("SUPER + ALT + SPACE") -- apps finder
+
+hl.unbind("SUPER + SHIFT + F")
+hl.unbind("SUPER + ALT + SHIFT + F")
+o.bind("SUPER + SHIFT + F", "File manager", { launch = "strata" })
+o.bind("SUPER + ALT + SHIFT + F", "File manager (cwd)",
+    "uwsm-app -- strata \"$(omarchy-cmd-terminal-cwd)\"")
 
 -- ==========================================
 -- App Launchers
@@ -69,3 +77,9 @@ o.bind("SUPER + E", "VoxType engine picker",
 o.bind("SUPER + M", "VoxType meeting controls",
     "mkdir -p $XDG_RUNTIME_DIR/voxtype && touch $XDG_RUNTIME_DIR/voxtype/meeting-controls.flag")
 -- <<< blizl.voxtype-osd keybindings <<<
+
+-- Omarchy Find file search overlay
+o.bind("SUPER + ALT + SPACE", "Find files & folders", "omarchy-shell shell toggle jesseburlamaque.omarchy-find")
+
+-- omarchy mail
+o.bind("SUPER + SHIFT + E", "Toggle Omamail", "omarchy-shell shell toggle omamail")
