@@ -9,12 +9,9 @@ hl.unbind("SUPER + SHIFT + W")   -- open Omwrite
 hl.unbind("SUPER + SHIFT + M")   -- install spotify
 hl.unbind("SUPER + SHIFT + G")   -- install signal
 hl.unbind("SUPER + ALT + SPACE") -- apps finder
+hl.unbind("SUPER + SHIFT + P")   --  Google photo
+hl.unbind("SUPER + SHIFT + X")   --  Twitter
 
-hl.unbind("SUPER + SHIFT + F")
-hl.unbind("SUPER + ALT + SHIFT + F")
-o.bind("SUPER + SHIFT + F", "File manager", { launch = "strata" })
-o.bind("SUPER + ALT + SHIFT + F", "File manager (cwd)",
-    "uwsm-app -- strata \"$(omarchy-cmd-terminal-cwd)\"")
 
 -- ==========================================
 -- App Launchers
@@ -25,10 +22,13 @@ hl.bind("SUPER + SHIFT + O", hl.dsp.exec_cmd("omarchy-launch-or-focus ^obsidian$
     { description = "Obsidian" })
 hl.bind("SUPER + SHIFT + C", hl.dsp.exec_cmd("omarchy-launch-or-focus ^Claude$ \"uwsm-app -- claude-desktop\""),
     { description = "Claude" })
+hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("omarchy-launch-or-focus ^Perplexity$ \"uwsm-app -- Perplexity\""),
+    { description = "Perplexity" })
 hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd("omarchy-launch-or-focus ^Telegram$ \"uwsm-app -- Telegram\""),
     { description = "Telegram" })
 hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("omarchy-launch-or-focus ^Sioyek$ \"uwsm-app -- sioyek\""),
     { description = "Sioyek" })
+
 
 -- ==========================================
 -- Web App Shortcuts
@@ -44,6 +44,10 @@ hl.bind("SUPER + SHIFT + M", hl.dsp.exec_cmd("omarchy-launch-or-focus-webapp Gma
 hl.bind("SUPER + SHIFT + G",
     hl.dsp.exec_cmd("omarchy-launch-or-focus-webapp Github \"https://github.com/mohamed8eo?tab=repositories\""),
     { description = "Github" })
+-- hl.bind("SUPER + SHIFT + J",
+--     hl.dsp.exec_cmd("omarchy-launch-or-focus-webapp Jellyfin \"http://localhost:8096/web/#/home\""),
+--     { description = "Jellyfin" })
+
 
 -- ==========================================
 -- Navigation & Window Management (Vim-style)
@@ -69,17 +73,16 @@ o.bind("ALT + F2", "Decrease brightness", "omarchy-brightness-display 5%-", { lo
 o.bind("ALT + F3", "Increase brightness", "omarchy-brightness-display +5%", { locked = true, repeating = true })
 
 -- ==========================================
+-- Omarchy Plugin
 -- Voxtype OSD Keybindings
 -- ==========================================
+o.bind("SUPER + Q", "omaSearch", "omarchy-shell shell toggle io.github.5h3rd1l.omasearch '{}'")
+-- Glass: blur behind the card and the input, not the dimmed backdrop.
+hl.layer_rule({ match = { namespace = "^omasearch$" }, blur = true, ignore_alpha = 0.45 })
+
 -- >>> blizl.voxtype-osd keybindings (managed; removed by bin/uninstall) >>>
 o.bind("SUPER + E", "VoxType engine picker",
     "mkdir -p $XDG_RUNTIME_DIR/voxtype && touch $XDG_RUNTIME_DIR/voxtype/engine-picker.flag")
 o.bind("SUPER + M", "VoxType meeting controls",
     "mkdir -p $XDG_RUNTIME_DIR/voxtype && touch $XDG_RUNTIME_DIR/voxtype/meeting-controls.flag")
 -- <<< blizl.voxtype-osd keybindings <<<
-
--- Omarchy Find file search overlay
-o.bind("SUPER + ALT + SPACE", "Find files & folders", "omarchy-shell shell toggle jesseburlamaque.omarchy-find")
-
--- omarchy mail
-o.bind("SUPER + SHIFT + E", "Toggle Omamail", "omarchy-shell shell toggle omamail")
