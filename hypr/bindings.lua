@@ -72,6 +72,11 @@ hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("omarchy-capture-screenshot"), { de
 o.bind("ALT + F2", "Decrease brightness", "omarchy-brightness-display 5%-", { locked = true, repeating = true })
 o.bind("ALT + F3", "Increase brightness", "omarchy-brightness-display +5%", { locked = true, repeating = true })
 
+-- The stock volume-up script caps at 100%; use Island's boost range to 150%.
+hl.unbind("XF86AudioRaiseVolume") -- was: Volume up (capped at 100%)
+o.bind("XF86AudioRaiseVolume", "Volume up (boost to 150%)",
+    "bash ~/.config/omarchy/plugins/mohamed.island/bin/volume-up.sh", { locked = true, repeating = true })
+
 -- ==========================================
 -- Omarchy Plugin
 -- Voxtype OSD Keybindings
@@ -86,3 +91,8 @@ o.bind("SUPER + E", "VoxType engine picker",
 o.bind("SUPER + M", "VoxType meeting controls",
     "mkdir -p $XDG_RUNTIME_DIR/voxtype && touch $XDG_RUNTIME_DIR/voxtype/meeting-controls.flag")
 -- <<< blizl.voxtype-osd keybindings <<<
+
+-- >>> spotlight setup tour (managed; rerun via "Run Setup Tour") >>>
+o.bind("ALT + SPACE", "Spotlight", "omarchy-shell shell toggle io.github.maajix.spotlight '{}'")
+-- <<< spotlight setup tour <<<
+-- o.bind("SUPER + SHIFT + L", "Lock screen (qylock Sword)", "/home/mohamed/.local/bin/qylock-lock")

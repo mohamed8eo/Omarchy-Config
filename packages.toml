@@ -1,0 +1,7 @@
+# Add package names here. Keep each category as a TOML array.
+# Pacman packages are installed with: omarchy pkg add
+pacman = []
+
+# AUR packages are installed with: omarchy pkg aur add
+# Omarchy must provide a working AUR helper for this operation.
+aur = []

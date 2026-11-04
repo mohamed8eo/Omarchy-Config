@@ -16,10 +16,10 @@ require("default.hypr.omarchy")
 -- Put your personal overrides in these files. They're loaded after Omarchy's
 -- defaults so package updates can improve the defaults without rewriting your
 -- ~/.config/hypr files.
--- require("border-adjust")
 require("hypr.monitors")
 require("hypr.input")
 require("hypr.bindings")
+require("default.hypr.require_optional").module("hypr.island-bindings")
 require("hypr.looknfeel")
 require("hypr.autostart")
 
@@ -28,7 +28,3 @@ require("default.hypr.toggles")
 
 -- Add any other personal Hyprland configuration below.
 -- o.window("qemu", { workspace = "5" })
-hl.env("XCURSOR_THEME", "MacOSX-hypr")
-hl.env("HYPRCURSOR_THEME", "MacOSX-hypr")
-hl.env("XCURSOR_SIZE", "32")
-hl.env("HYPRCURSOR_SIZE", "32")
