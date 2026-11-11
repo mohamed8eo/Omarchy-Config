@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-REPO_URL='https://github.com/mohamed8eo/omarchy-setup.git'
+REPO_URL='https://github.com/mohamed8eo/omarchy-Config.git'
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/omarchy-setup.XXXXXX")
 cleanup() { rm -rf -- "$WORK_DIR"; }
 trap cleanup EXIT
