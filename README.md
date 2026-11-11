@@ -21,7 +21,7 @@ pacman = ["example-pacman-package"]
 aur = ["example-aur-package"]
 ```
 
-The installer runs `omarchy update` first, then installs listed packages and `omarchy-fish`. AUR installation requires Omarchy's AUR package workflow to be available.
+The installer runs `omarchy update` first, then installs Node.js, Go, Python and Rust (`omarchy install dev-env`), Codex (`omarchy install ai chatgpt`), the listed packages and `omarchy-fish`. AUR installation requires Omarchy's AUR package workflow to be available.
 
 ## What it changes
 
@@ -31,4 +31,7 @@ The installer runs `omarchy update` first, then installs listed packages and `om
 - Backs up existing destination files under `~/.local/state/omarchy-setup/backups/<timestamp>/` before replacement.
 - Copies same-named files from `hypr/` into `~/.config/hypr/`.
 - Copies `starship.toml` to `~/.config/starship.toml` and `tmux.conf` to `~/.config/tmux/tmux.conf`.
+- Installs dev environments (Node.js, Go, Python, Rust) with `omarchy install dev-env`, skipping any already installed via mise.
+- Installs Codex with `omarchy install ai chatgpt`.
+- Installs `httpie`, `pnpm` (pacman) and `cliamp`, `claude-desktop` (AUR) from `packages.toml`.
 - Installs `omarchy-fish` and changes the account login shell to Fish.
