@@ -4,4 +4,4 @@ pacman = []
 
 # AUR packages are installed with: omarchy pkg aur add
 # Omarchy must provide a working AUR helper for this operation.
-aur = []
+aur = [cliamp]
