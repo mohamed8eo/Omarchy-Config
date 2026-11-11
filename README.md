@@ -21,12 +21,12 @@ pacman = ["example-pacman-package"]
 aur = ["example-aur-package"]
 ```
 
-The installer does not run `omarchy update` (run it yourself when you want). It installs Node.js, Go, Python and Rust (`omarchy install dev-env`), Codex (`omarchy install ai chatgpt`), the listed packages and `omarchy-fish`. AUR installation requires Omarchy's AUR package workflow to be available.
+The installer runs `omarchy update` first; if the update fails it prints a warning and continues. It then installs Node.js, Go, Python and Rust (`omarchy install dev-env`), Codex (`omarchy install ai chatgpt`), the listed packages and `omarchy-fish`. AUR installation requires Omarchy's AUR package workflow to be available.
 
 ## What it changes
 
 - Shows a file-by-file preview and asks before making system changes.
-- Does not run `omarchy update`, so a broken Omarchy mirror can't stop the setup. Other failing steps still stop it, except plugins, which are skipped.
+- Runs `omarchy update` first. If it fails (for example a broken mirror), it warns and continues. Other failing steps still stop the setup, except Ghostty and the plugins, which are skipped.
 - Applies the Catppuccin Omarchy theme and copies `images/` into `~/.config/omarchy/backgrounds/catppuccin/`.
 - Backs up existing destination files under `~/.local/state/omarchy-setup/backups/<timestamp>/` before replacement.
 - Copies same-named files from `hypr/` into `~/.config/hypr/`.
