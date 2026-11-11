@@ -15,7 +15,7 @@ trap 'on_error "$LINENO"' ERR
 [[ $EUID -ne 0 ]] || die 'Run as your normal user, not with sudo.'
 command -v omarchy >/dev/null || die 'Omarchy was not found; this installer requires Omarchy.'
 command -v python3 >/dev/null || die 'python3 is required to read packages.toml.'
-[[ -r /dev/tty ]] || die 'An interactive terminal is required for the preview, update, and shell change.'
+[[ -r /dev/tty ]] || die 'An interactive terminal is required for the preview and shell change.'
 [[ -f ${BASH_SOURCE[0]} ]] || die 'Could not locate installer files. Download and extract the repository first.'
 REPO_DIR=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
 for required in hypr images starship.toml tmux.conf packages.toml; do
@@ -48,12 +48,13 @@ while IFS=$'\t' read -r kind package; do
 done <<< "$PACKAGE_DATA"
 
 printf 'Plan:\n'
-printf '  Update Omarchy and system packages first\n'
 printf '  Install dev environments: Node.js, Go, Python, Rust (omarchy install dev-env)\n'
 printf '  Install Codex (omarchy install ai chatgpt)\n'
+printf '  Install Ghostty (omarchy install terminal ghostty) and make it the default terminal\n'
 printf '  Install packages listed in packages.toml and omarchy-fish\n'
 printf '  Set Fish as this user’s login shell\n'
 printf '  Set the Catppuccin theme and copy repo images\n'
+printf '  Install Omarchy plugins at the end: lock-designs, omarchy-spotlight, VoxType OSD, island (and switch the bar to island)\n'
 printf '  Replace these files (existing targets will be backed up first):\n'
 find "$REPO_DIR/hypr" -maxdepth 1 -type f -printf '    ~/.config/hypr/%f\n' | sort
 printf '    ~/.config/starship.toml\n    ~/.config/tmux/tmux.conf\n'
@@ -62,9 +63,6 @@ printf '  Pacman: %s\n' "${PACMAN_PACKAGES[*]:-(none listed)}"
 printf '  AUR:    %s\n' "${AUR_PACKAGES[*]:-(none listed)}"
 read -r -p 'Continue? [y/N] ' answer </dev/tty
 [[ $answer == [yY] || $answer == [yY][eE][sS] ]] || { printf 'Cancelled.\n'; exit 0; }
-
-printf '\nRunning omarchy update first...\n'
-omarchy update </dev/tty
 
 # Node goes first: the Codex launcher needs the mise-managed Node.
 install_dev_env() {
@@ -135,4 +133,45 @@ while IFS= read -r -d '' source; do
   copy_file "$source" "$HOME/.config/omarchy/backgrounds/catppuccin/$name" "images/$name"
 done < <(find "$REPO_DIR/images" -maxdepth 1 -type f -print0)
 
+
+# Ghostty as the default terminal. Omarchy launches terminals through xdg-terminal-exec,
+# which uses the first entry of ~/.config/xdg-terminals.list.
+printf '\nInstalling Ghostty...\n'
+if ! omarchy install terminal ghostty </dev/tty; then
+  printf 'Warning: "omarchy install terminal ghostty" failed; continuing.\n' >&2
+fi
+XDG_TERMINALS="$HOME/.config/xdg-terminals.list"
+GHOSTTY_DESKTOP=com.mitchellh.ghostty.desktop
+if [[ $(head -n 1 "$XDG_TERMINALS" 2>/dev/null || true) != "$GHOSTTY_DESKTOP" ]]; then
+  backup_if_present "$XDG_TERMINALS" xdg-terminals.list
+  mkdir -p "$(dirname -- "$XDG_TERMINALS")"
+  XDG_TMP=$(mktemp)
+  { printf '%s\n' "$GHOSTTY_DESKTOP"; grep -vFx -- "$GHOSTTY_DESKTOP" "$XDG_TERMINALS" 2>/dev/null || true; } > "$XDG_TMP"
+  mv -- "$XDG_TMP" "$XDG_TERMINALS"
+fi
+printf 'Default terminal: Ghostty (%s)\n' "$XDG_TERMINALS"
+
+# Omarchy plugins. A failing plugin is reported and skipped; it never stops the setup.
+FAILED_PLUGINS=()
+run_optional() {
+  local label=$1; shift
+  printf '\n%s...\n' "$label"
+  if ! "$@" </dev/tty; then
+    printf 'Warning: "%s" failed; continuing.\n' "$label" >&2
+    FAILED_PLUGINS+=("$label")
+    return 1
+  fi
+}
+
+printf '\nInstalling Omarchy plugins...\n'
+run_optional 'lock-designs' omarchy plugin add https://github.com/SmoothPixels/lock-designs.git --enable || true
+run_optional 'omarchy-spotlight' omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable || true
+if run_optional 'VoxType OSD' omarchy plugin add https://github.com/Blizl/Omarchy-VoxType-OSD.git --enable; then
+  run_optional 'VoxType OSD setup' "$HOME/.config/omarchy/plugins/blizl.voxtype-osd/bin/setup" || true
+fi
+if run_optional 'island plugin' omarchy plugin add https://github.com/Guilhermerisu/island.git; then
+  run_optional 'island bar' omarchy bar use guilhermerisu.island || true
+fi
+
 printf '\nSetup complete. Backups: %s\nFish is now the configured login shell; open a new login session to use it.\n' "$BACKUP_DIR"
+if ((${#FAILED_PLUGINS[@]})); then printf 'These plugin steps failed and were skipped: %s\n' "${FAILED_PLUGINS[*]}" >&2; fi
