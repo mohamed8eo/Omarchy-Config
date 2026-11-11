@@ -49,6 +49,8 @@ done <<< "$PACKAGE_DATA"
 
 printf 'Plan:\n'
 printf '  Update Omarchy and system packages first\n'
+printf '  Install dev environments: Node.js, Go, Python, Rust (omarchy install dev-env)\n'
+printf '  Install Codex (omarchy install ai chatgpt)\n'
 printf '  Install packages listed in packages.toml and omarchy-fish\n'
 printf '  Set Fish as this user’s login shell\n'
 printf '  Set the Catppuccin theme and copy repo images\n'
@@ -63,6 +65,30 @@ read -r -p 'Continue? [y/N] ' answer </dev/tty
 
 printf '\nRunning omarchy update first...\n'
 omarchy update </dev/tty
+
+# Node goes first: the Codex launcher needs the mise-managed Node.
+install_dev_env() {
+  local name=$1 tool=$2
+  if mise where "$tool" >/dev/null 2>&1; then
+    printf 'Skipping %s (already installed via mise).\n' "$name"
+  else
+    printf '\nInstalling %s...\n' "$name"
+    omarchy install dev-env "$name" </dev/tty
+  fi
+}
+install_dev_env node node
+install_dev_env go go
+install_dev_env python python
+if command -v rustc >/dev/null || mise where rust >/dev/null 2>&1; then
+  printf 'Skipping rust (already installed).\n'
+else
+  printf '\nInstalling rust...\n'
+  omarchy install dev-env rust </dev/tty
+fi
+
+printf '\nInstalling Codex...\n'
+omarchy install ai chatgpt </dev/tty
+
 if ((${#PACMAN_PACKAGES[@]})); then omarchy pkg add "${PACMAN_PACKAGES[@]}" </dev/tty; fi
 if ((${#AUR_PACKAGES[@]})); then omarchy pkg aur add "${AUR_PACKAGES[@]}" </dev/tty; fi
 omarchy pkg add omarchy-fish </dev/tty
