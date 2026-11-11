@@ -15,7 +15,7 @@ trap 'on_error "$LINENO"' ERR
 [[ $EUID -ne 0 ]] || die 'Run as your normal user, not with sudo.'
 command -v omarchy >/dev/null || die 'Omarchy was not found; this installer requires Omarchy.'
 command -v python3 >/dev/null || die 'python3 is required to read packages.toml.'
-[[ -r /dev/tty ]] || die 'An interactive terminal is required for the preview and shell change.'
+[[ -r /dev/tty ]] || die 'An interactive terminal is required for the preview, update, and shell change.'
 [[ -f ${BASH_SOURCE[0]} ]] || die 'Could not locate installer files. Download and extract the repository first.'
 REPO_DIR=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
 for required in hypr images starship.toml tmux.conf packages.toml; do
@@ -48,6 +48,7 @@ while IFS=$'\t' read -r kind package; do
 done <<< "$PACKAGE_DATA"
 
 printf 'Plan:\n'
+printf '  Run omarchy update first (skipped with a warning if it fails)\n'
 printf '  Install dev environments: Node.js, Go, Python, Rust (omarchy install dev-env)\n'
 printf '  Install Codex (omarchy install ai chatgpt)\n'
 printf '  Install Ghostty (omarchy install terminal ghostty) and make it the default terminal\n'
@@ -63,6 +64,11 @@ printf '  Pacman: %s\n' "${PACMAN_PACKAGES[*]:-(none listed)}"
 printf '  AUR:    %s\n' "${AUR_PACKAGES[*]:-(none listed)}"
 read -r -p 'Continue? [y/N] ' answer </dev/tty
 [[ $answer == [yY] || $answer == [yY][eE][sS] ]] || { printf 'Cancelled.\n'; exit 0; }
+
+printf '\nRunning omarchy update...\n'
+if ! omarchy update </dev/tty; then
+  printf '\nWarning: omarchy update failed; skipping it and continuing.\n' >&2
+fi
 
 # Node goes first: the Codex launcher needs the mise-managed Node.
 install_dev_env() {
