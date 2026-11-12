@@ -7,7 +7,7 @@ Personal setup files and installer for my Omarchy machine.
 Run as your normal user from an Omarchy session:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mohamed8eo/omarchy-setup/main/install.bash | bash
+curl -fsSL https://raw.githubusercontent.com/mohamed8eo/Omarchy-Config/main/install.bash | bash
 ```
 
 The small entrypoint clones the latest `main` branch into a temporary directory, then runs `setup.bash` with the full repository available. The temporary checkout is removed when the installer exits.
