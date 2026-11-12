@@ -252,15 +252,26 @@ run_optional() {
   fi
 }
 
+
 printf '\nInstalling Omarchy plugins...\n'
-run_optional 'lock-designs' omarchy plugin add https://github.com/SmoothPixels/lock-designs.git --enable || true
+
+# QyLock - Themed lock screen and live backgrounds
+if run_optional 'qylock-oma' omarchy plugin add https://github.com/mjtiempo/qylock-oma.git --enable --yes; then
+  run_optional 'QyLock sync' omarchy-shell mark.lock-themes sync || true
+fi
+
 run_optional 'omarchy-spotlight' omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable || true
+
 if run_optional 'VoxType OSD' omarchy plugin add https://github.com/Blizl/Omarchy-VoxType-OSD.git --enable; then
   run_optional 'VoxType OSD setup' "$HOME/.config/omarchy/plugins/blizl.voxtype-osd/bin/setup" || true
 fi
-if run_optional 'island plugin' omarchy plugin add https://github.com/Guilhermerisu/island.git; then
+
+if run_optional 'island plugin' omarchy plugin add https://github.com/mohamed8eo/island.git; then
   run_optional 'island bar' omarchy bar use guilhermerisu.island || true
 fi
+
+# Restart Omarchy shell to load QyLock and other plugins
+omarchy restart shell
 
 printf '\nSetup complete. Backups: %s\nFish is now the configured login shell; open a new login session to use it.\n' "$BACKUP_DIR"
 if ((${#FAILED_PLUGINS[@]})); then printf 'These plugin steps failed and were skipped: %s\n' "${FAILED_PLUGINS[*]}" >&2; fi
