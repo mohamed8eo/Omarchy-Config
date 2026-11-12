@@ -35,5 +35,6 @@ The installer runs `omarchy update` first; if the update fails it prints a warni
 - Installs Codex with `omarchy install ai chatgpt`.
 - Installs `httpie`, `pnpm` (pacman) and `cliamp`, `claude-desktop` (AUR) from `packages.toml`.
 - Installs Ghostty with `omarchy install terminal ghostty` and puts it first in `~/.config/xdg-terminals.list` so it is the default terminal (the old file is backed up).
+- Removes these web app launchers if they exist: Google Contacts, Google Maps, Google Messages, Google Photos, HEY, X, Zoom, Basecamp (`omarchy webapp remove <name>`). Missing ones are skipped.
 - At the end, installs the Omarchy plugins `lock-designs`, `omarchy-spotlight`, `Omarchy-VoxType-OSD` (plus its setup script) and `island` (then runs `omarchy bar use guilhermerisu.island`). A failing plugin step is reported and skipped.
 - Installs `omarchy-fish` and changes the account login shell to Fish.
