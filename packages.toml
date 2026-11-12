@@ -4,4 +4,4 @@ pacman = ["httpie", "pnpm"]
 
 # AUR packages are installed with: omarchy pkg aur add
 # Omarchy must provide a working AUR helper for this operation.
-aur = ["cliamp", "claude-desktop"]
+aur = ["cliamp", "claude-desktop", "helium-browser-bin"]
