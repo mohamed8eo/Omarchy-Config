@@ -55,6 +55,7 @@ printf '  Install Ghostty (omarchy install terminal ghostty) and make it the def
 printf '  Install packages listed in packages.toml and omarchy-fish\n'
 printf '  Set Fish as this user’s login shell\n'
 printf '  Set the Catppuccin theme and copy repo images\n'
+printf '  Remove these web app launchers if present: Google Contacts, Google Maps, Google Messages, Google Photos, HEY, X, Zoom, Basecamp\n'
 printf '  Install Omarchy plugins at the end: lock-designs, omarchy-spotlight, VoxType OSD, island (and switch the bar to island)\n'
 printf '  Replace these files (existing targets will be backed up first):\n'
 find "$REPO_DIR/hypr" -maxdepth 1 -type f -printf '    ~/.config/hypr/%f\n' | sort
@@ -156,6 +157,22 @@ if [[ $(head -n 1 "$XDG_TERMINALS" 2>/dev/null || true) != "$GHOSTTY_DESKTOP" ]]
   mv -- "$XDG_TMP" "$XDG_TERMINALS"
 fi
 printf 'Default terminal: Ghostty (%s)\n' "$XDG_TERMINALS"
+
+# Remove web app launchers you don't want. Only launchers that exist are removed.
+WEBAPPS_TO_REMOVE=("Google Contacts" "Google Maps" "Google Messages" "Google Photos" "HEY" "X" "Zoom" "Basecamp")
+WEBAPP_DIR="$HOME/.local/share/applications"
+printf '\nRemoving unwanted web apps...\n'
+for webapp in "${WEBAPPS_TO_REMOVE[@]}"; do
+  if [[ -f $WEBAPP_DIR/$webapp.desktop ]]; then
+    if omarchy webapp remove "$webapp"; then
+      printf 'Removed web app: %s\n' "$webapp"
+    else
+      printf 'Warning: could not remove web app "%s"; continuing.\n' "$webapp" >&2
+    fi
+  else
+    printf 'Web app not installed, skipping: %s\n' "$webapp"
+  fi
+done
 
 # Omarchy plugins. A failing plugin is reported and skipped; it never stops the setup.
 FAILED_PLUGINS=()
