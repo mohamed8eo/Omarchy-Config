@@ -52,6 +52,7 @@ printf '  Run omarchy update first (skipped with a warning if it fails)\n'
 printf '  Install dev environments: Node.js, Go, Python, Rust (omarchy install dev-env)\n'
 printf '  Install Codex (omarchy install ai chatgpt)\n'
 printf '  Install Ghostty (omarchy install terminal ghostty) and make it the default terminal\n'
+printf '  Apply the Helium hardware video acceleration fix (launcher wrapper, flags, desktop entry)\n'
 printf '  Install packages listed in packages.toml and omarchy-fish\n'
 printf '  Set Fish as this user’s login shell\n'
 printf '  Set the Catppuccin theme and copy repo images\n'
@@ -95,6 +96,13 @@ printf '\nInstalling Codex...\n'
 omarchy install ai chatgpt </dev/tty
 
 if ((${#PACMAN_PACKAGES[@]})); then omarchy pkg add "${PACMAN_PACKAGES[@]}" </dev/tty; fi
+if [[ " ${AUR_PACKAGES[*]:-} " == *" helium-browser-bin "* ]]; then
+  # The AUR package verifies Helium's PGP signature, so its signing key must be known.
+  printf '\nImporting Helium signing key...\n'
+  if ! gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E </dev/tty; then
+    printf 'Warning: could not import the Helium signing key; the Helium install may fail.\n' >&2
+  fi
+fi
 if ((${#AUR_PACKAGES[@]})); then omarchy pkg aur add "${AUR_PACKAGES[@]}" </dev/tty; fi
 omarchy pkg add omarchy-fish </dev/tty
 
@@ -140,6 +148,64 @@ while IFS= read -r -d '' source; do
   copy_file "$source" "$HOME/.config/omarchy/backgrounds/catppuccin/$name" "images/$name"
 done < <(find "$REPO_DIR/images" -maxdepth 1 -type f -print0)
 
+
+# Helium hardware video decode fix, adapted from omarchy-chromium-hardware-acceleration-fix.md
+# (that note targets Brave). The wrapper forces Mesa EGL and the right VA-API driver; the
+# desktop-entry override makes launchers use it. Skipped if Helium is not installed.
+if command -v helium-browser >/dev/null 2>&1; then
+  printf '\nApplying Helium hardware acceleration fix...\n'
+  HELIUM_WRAPPER="$HOME/.local/bin/omarchy-launch-helium"
+  HELIUM_FLAGS="$HOME/.config/helium-browser-flags.conf"
+  HELIUM_DESKTOP_SRC=${HELIUM_DESKTOP_SRC:-/usr/share/applications/helium-browser.desktop}
+  HELIUM_DESKTOP="$HOME/.local/share/applications/helium-browser.desktop"
+
+  backup_if_present "$HELIUM_WRAPPER" local-bin/omarchy-launch-helium
+  mkdir -p "$(dirname -- "$HELIUM_WRAPPER")"
+  cat > "$HELIUM_WRAPPER" <<'WRAPPER'
+#!/bin/bash
+MESA_EGL=/usr/share/glvnd/egl_vendor.d/50_mesa.json
+[[ -f $MESA_EGL ]] && export __EGL_VENDOR_LIBRARY_FILENAMES="$MESA_EGL"
+
+IGPU="$(lspci 2>/dev/null | grep -iE 'vga|3d|display' | grep -iv 'nvidia' | grep -iE 'intel|amd|advanced micro devices|radeon|ati ')"
+if echo "$IGPU" | grep -qi 'intel'; then
+  export LIBVA_DRIVER_NAME=iHD
+elif [[ -n $IGPU ]]; then
+  export LIBVA_DRIVER_NAME=radeonsi
+fi
+
+exec /usr/bin/helium-browser "$@"
+WRAPPER
+  chmod +x "$HELIUM_WRAPPER"
+  printf 'Installed %s\n' "$HELIUM_WRAPPER"
+
+  backup_if_present "$HELIUM_FLAGS" helium-browser-flags.conf
+  mkdir -p "$(dirname -- "$HELIUM_FLAGS")"
+  cat > "$HELIUM_FLAGS" <<'FLAGS'
+--ozone-platform=wayland
+--ozone-platform-hint=wayland
+--password-store=gnome-libsecret
+--enable-features=TouchpadOverscrollHistoryNavigation
+FLAGS
+  printf 'Installed %s\n' "$HELIUM_FLAGS"
+
+  if [[ -r $HELIUM_DESKTOP_SRC ]]; then
+    backup_if_present "$HELIUM_DESKTOP" applications/helium-browser.desktop
+    mkdir -p "$(dirname -- "$HELIUM_DESKTOP")"
+    sed -E "s#^Exec=(/usr/bin/)?(helium-browser|chromium)#Exec=$HELIUM_WRAPPER#" "$HELIUM_DESKTOP_SRC" > "$HELIUM_DESKTOP"
+    if grep -qF "Exec=$HELIUM_WRAPPER" "$HELIUM_DESKTOP"; then
+      printf 'Installed %s\n' "$HELIUM_DESKTOP"
+    else
+      printf 'Warning: no Exec line was rewritten in %s; launchers may skip the wrapper.\n' "$HELIUM_DESKTOP" >&2
+    fi
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database "$(dirname -- "$HELIUM_DESKTOP")" || true
+    fi
+  else
+    printf 'Warning: %s not found; skipped the desktop entry override.\n' "$HELIUM_DESKTOP_SRC" >&2
+  fi
+else
+  printf '\nHelium is not installed; skipping the hardware acceleration fix.\n'
+fi
 
 # Ghostty as the default terminal. Omarchy launches terminals through xdg-terminal-exec,
 # which uses the first entry of ~/.config/xdg-terminals.list.
