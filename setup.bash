@@ -3,6 +3,11 @@ set -Eeuo pipefail
 
 INSTALLER_NAME=omarchy-setup
 BACKUP_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-setup/backups"
+
+# Filename from images/ to use as the desktop background after setup.
+# Defaults to 139396752_p0.jpg; override it to use a different image.
+# Example: WALLPAPER_IMAGE=tree.jpg ./setup.bash
+WALLPAPER_IMAGE=${WALLPAPER_IMAGE:-139396752_p0.jpg}
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 on_error() {
   local status=$?
@@ -21,6 +26,8 @@ REPO_DIR=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
 for required in hypr images starship.toml tmux.conf packages.toml; do
   [[ -e $REPO_DIR/$required ]] || die "Required repo entry is missing: $required"
 done
+[[ $WALLPAPER_IMAGE != */* ]] || die 'WALLPAPER_IMAGE must be a filename from images/, not a path.'
+[[ -f $REPO_DIR/images/$WALLPAPER_IMAGE ]] || die "WALLPAPER_IMAGE not found in images/: $WALLPAPER_IMAGE"
 
 PACKAGE_DATA=$(python3 - "$REPO_DIR/packages.toml" <<'PY'
 import sys, tomllib
@@ -56,6 +63,7 @@ printf '  Apply the Helium hardware video acceleration fix (launcher wrapper, fl
 printf '  Install packages listed in packages.toml and omarchy-fish\n'
 printf '  Set Fish as this user’s login shell\n'
 printf '  Set the Catppuccin theme and copy repo images\n'
+printf '  Set the desktop background to images/%s\n' "$WALLPAPER_IMAGE"
 printf '  Install Neovim config from mohamed8eo/nvim_config (backs up ~/.config/nvim to ~/.config/nvim-bak)\n'
 printf '  Create ~/personal and clone ThePrimeagen/harpoon and ThePrimeagen/99 into it\n'
 printf '  Remove these web app launchers if present: Google Contacts, Google Maps, Google Messages, Google Photos, HEY, X, Zoom, Basecamp\n'
@@ -149,6 +157,14 @@ while IFS= read -r -d '' source; do
   name=$(basename -- "$source")
   copy_file "$source" "$HOME/.config/omarchy/backgrounds/catppuccin/$name" "images/$name"
 done < <(find "$REPO_DIR/images" -maxdepth 1 -type f -print0)
+
+WALLPAPER_PATH="$HOME/.config/omarchy/backgrounds/catppuccin/$WALLPAPER_IMAGE"
+printf '\nSetting desktop background to %s...\n' "$WALLPAPER_IMAGE"
+if omarchy theme bg set "$WALLPAPER_PATH" </dev/tty; then
+  printf 'Desktop background set to %s.\n' "$WALLPAPER_PATH"
+else
+  printf 'Warning: could not set the desktop background to %s; continuing.\n' "$WALLPAPER_PATH" >&2
+fi
 
 # Neovim config from mohamed8eo/nvim_config.
 # Backs up the current ~/.config/nvim to ~/.config/nvim-bak, clones the repo, and installs it.

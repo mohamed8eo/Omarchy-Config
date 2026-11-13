@@ -23,11 +23,27 @@ aur = ["example-aur-package"]
 
 The installer runs `omarchy update` first; if the update fails it prints a warning and continues. It then installs Node.js, Go, Python and Rust (`omarchy install dev-env`), Codex (`omarchy install ai chatgpt`), the listed packages and `omarchy-fish`. AUR installation requires Omarchy's AUR package workflow to be available.
 
+## Desktop background
+
+The installer copies every file from `images/` into `~/.config/omarchy/backgrounds/catppuccin/` and then sets `139396752_p0.jpg` as the desktop background using `omarchy theme bg set`. To use a different image, export `WALLPAPER_IMAGE` with its filename before running the installer:
+
+```bash
+export WALLPAPER_IMAGE=tree.jpg
+curl -fsSL https://raw.githubusercontent.com/mohamed8eo/Omarchy-Config/main/install.bash | bash
+```
+
+When running from a local checkout, use `WALLPAPER_IMAGE=tree.jpg ./setup.bash`. You can change it later with:
+
+```bash
+omarchy theme bg set ~/.config/omarchy/backgrounds/catppuccin/tree.jpg
+```
+
 ## What it changes
 
 - Shows a file-by-file preview and asks before making system changes.
 - Runs `omarchy update` first. If it fails (for example a broken mirror), it warns and continues. Other failing steps still stop the setup, except Ghostty and the plugins, which are skipped.
 - Applies the Catppuccin Omarchy theme and copies `images/` into `~/.config/omarchy/backgrounds/catppuccin/`.
+- Sets `139396752_p0.jpg` as the desktop background with `omarchy theme bg set` (override with `WALLPAPER_IMAGE=<filename from images/>`).
 - Backs up existing destination files under `~/.local/state/omarchy-setup/backups/<timestamp>/` before replacement.
 - Copies same-named files from `hypr/` into `~/.config/hypr/`.
 - Copies `starship.toml` to `~/.config/starship.toml` and `tmux.conf` to `~/.config/tmux/tmux.conf`.

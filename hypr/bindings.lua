@@ -77,22 +77,8 @@ hl.unbind("XF86AudioRaiseVolume") -- was: Volume up (capped at 100%)
 o.bind("XF86AudioRaiseVolume", "Volume up (boost to 150%)",
     "bash ~/.config/omarchy/plugins/mohamed.island/bin/volume-up.sh", { locked = true, repeating = true })
 
--- ==========================================
--- Omarchy Plugin
--- Voxtype OSD Keybindings
--- ==========================================
-o.bind("SUPER + Q", "omaSearch", "omarchy-shell shell toggle io.github.5h3rd1l.omasearch '{}'")
--- Glass: blur behind the card and the input, not the dimmed backdrop.
-hl.layer_rule({ match = { namespace = "^omasearch$" }, blur = true, ignore_alpha = 0.45 })
-
--- >>> blizl.voxtype-osd keybindings (managed; removed by bin/uninstall) >>>
-o.bind("SUPER + E", "VoxType engine picker",
-    "mkdir -p $XDG_RUNTIME_DIR/voxtype && touch $XDG_RUNTIME_DIR/voxtype/engine-picker.flag")
-o.bind("SUPER + M", "VoxType meeting controls",
-    "mkdir -p $XDG_RUNTIME_DIR/voxtype && touch $XDG_RUNTIME_DIR/voxtype/meeting-controls.flag")
--- <<< blizl.voxtype-osd keybindings <<<
 
 -- >>> spotlight setup tour (managed; rerun via "Run Setup Tour") >>>
-o.bind("ALT + SPACE", "Spotlight", "omarchy-shell shell toggle io.github.maajix.spotlight '{}'")
+o.bind("SUPER + ALT + SPACE", "Spotlight", "omarchy-shell shell toggle io.github.maajix.spotlight '{}'")
 -- <<< spotlight setup tour <<<
 -- o.bind("SUPER + SHIFT + L", "Lock screen (qylock Sword)", "/home/mohamed/.local/bin/qylock-lock")
