@@ -56,15 +56,48 @@ FLAGS
     warn "$HELIUM_DESKTOP_SRC not found; skipped the desktop entry override."
   fi
 
-  # Set Helium as the default browser.
+  # Set Helium as the default browser (multiple methods for compatibility).
+  printf 'Setting Helium as default browser...\n'
+  local browser="helium-browser.desktop"
+  local success=0
+
+  # Method 1: xdg-settings (standard)
   if command -v xdg-settings >/dev/null 2>&1; then
-    if xdg-settings set default-web-browser helium-browser.desktop; then
-      printf 'Default browser set to Helium (helium-browser.desktop).\n'
+    if xdg-settings set default-web-browser "$browser"; then
+      printf '  xdg-settings: OK\n'
+      success=1
     else
-      warn 'could not set Helium as the default browser.'
+      printf '  xdg-settings: failed\n'
     fi
+  fi
+
+  # Method 2: gio mime (GNOME/GTK apps)
+  if command -v gio >/dev/null 2>&1; then
+    gio mime x-scheme-handler/http "$browser" 2>/dev/null && printf '  gio http: OK\n' || printf '  gio http: failed\n'
+    gio mime x-scheme-handler/https "$browser" 2>/dev/null && printf '  gio https: OK\n' || printf '  gio https: failed\n'
+    gio mime text/html "$browser" 2>/dev/null && printf '  gio html: OK\n' || printf '  gio html: failed\n'
+    success=1
+  fi
+
+  # Method 3: xdg-mime (freedesktop standard)
+  if command -v xdg-mime >/dev/null 2>&1; then
+    xdg-mime default "$browser" x-scheme-handler/http 2>/dev/null && printf '  xdg-mime http: OK\n' || printf '  xdg-mime http: failed\n'
+    xdg-mime default "$browser" x-scheme-handler/https 2>/dev/null && printf '  xdg-mime https: OK\n' || printf '  xdg-mime https: failed\n'
+    xdg-mime default "$browser" text/html 2>/dev/null && printf '  xdg-mime html: OK\n' || printf '  xdg-mime html: failed\n'
+    xdg-mime default "$browser" application/xhtml+xml 2>/dev/null && printf '  xdg-mime xhtml: OK\n' || printf '  xdg-mime xhtml: failed\n'
+    success=1
+  fi
+
+  # Refresh desktop database
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+    printf '  desktop database: refreshed\n'
+  fi
+
+  if ((success)); then
+    printf 'Default browser set to Helium.\n'
   else
-    warn 'xdg-settings not found; could not set Helium as the default browser.'
+    warn 'could not set Helium as default browser (no suitable tool found).'
   fi
 else
   printf '\nHelium is not installed; skipping the hardware acceleration fix and default browser setup.\n'

@@ -1,12 +1,14 @@
 # shellcheck shell=bash
 # Step 56: Cliamp Quran setup (optional)
 #
-# Configures cliamp with Quran playlist, downloads audio files from Dropbox (optional),
-# creates desktop entry override, and adds Fish function.
+# Optionally downloads Quran audio from Dropbox into ~/.Quran, fixes the paths in the
+# installed cliamp config, creates the "Quran" playlist, overrides the desktop launcher so it
+# starts that playlist, and adds a Fish `cliamp` function.
+# (The cliamp config itself lives in config/cliamp/config.toml and is installed by step 50.)
 
-# Only run if cliamp is in the package list (installed via 20-packages.bash)
+# cliamp is installed from packages.toml in step 20.
 if ! command -v cliamp >/dev/null 2>&1; then
-  printf 'cliamp not installed; skipping cliamp setup.\n'
+  warn 'cliamp is not installed; skipped the cliamp Quran setup.'
   return 0
 fi
 
@@ -21,68 +23,64 @@ APP_NAME="cliamp.desktop"
 APP_OVERRIDE="$APP_DIR/$APP_NAME"
 FISH_CONFIG="$HOME/.config/fish/config.fish"
 FISH_MARKER="# >>> cliamp-quran launcher >>>"
+CLIAMP_BIN=$(command -v cliamp)
 
-# --- Optional: Download Quran audio files ---
-printf '\nDownload Quran audio files from Dropbox?\n'
-printf 'This will download ~2GB of audio files to %s\n' "$QURAN_DIR"
-printf '[y/N] '
-read -r REPLY </dev/tty
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-  printf 'Downloading Quran audio files...\n'
-  mkdir -p "$QURAN_DIR"
-  cd "$QURAN_DIR"
+mkdir -p "$QURAN_DIR" "$CONFIG_DIR" "$PLAYLIST_DIR" "$APP_DIR"
 
-  DROPBOX_URL='https://www.dropbox.com/scl/fo/plksmdojj7nyqlxh35lwq/AJCzj2g6sP8oZmqLrce7SAE?rlkey=qm5i27dsy0wgodp5ujwdxeapu&st=98m1qak2&dl=1'
-  ZIP_FILE="dropbox-folder.zip"
-  EXTRACT_DIR="dropbox-files"
+# --- Optional: download the Quran audio files ---
+# Not asked again when ~/.Quran already contains audio files (so re-running is quick).
+if [[ -n $(find "$QURAN_DIR" -maxdepth 1 -type f \( -name '*.mp3' -o -name '*.m4a' -o -name '*.opus' \) -print -quit) ]]; then
+  printf 'Quran audio already present in %s; skipping the download.\n' "$QURAN_DIR"
+else
+  printf '\nDownload Quran audio files from Dropbox?\n'
+  printf 'This downloads about 2GB of audio to %s\n' "$QURAN_DIR"
+  read -r -p 'Download now? [y/N] ' quran_answer </dev/tty || quran_answer=''
+  if [[ $quran_answer == [yY] || $quran_answer == [yY][eE][sS] ]]; then
+    DROPBOX_URL='https://www.dropbox.com/scl/fo/plksmdojj7nyqlxh35lwq/AJCzj2g6sP8oZmqLrce7SAE?rlkey=qm5i27dsy0wgodp5ujwdxeapu&st=98m1qak2&dl=1'
+    ZIP_FILE="$QURAN_DIR/dropbox-folder.zip"
+    EXTRACT_DIR="$QURAN_DIR/dropbox-files"
+    TMP_PATHS+=("$ZIP_FILE" "$EXTRACT_DIR")
 
-  if retry 3 curl -L --fail "$DROPBOX_URL" -o "$ZIP_FILE"; then
-    printf 'Download complete. Extracting...\n'
-    if command -v unzip >/dev/null 2>&1; then
-      unzip -o "$ZIP_FILE" -d "$EXTRACT_DIR"
-      # Move extracted files to .Quran root if they're in a subfolder
-      if [[ -d "$EXTRACT_DIR" ]]; then
-        find "$EXTRACT_DIR" -type f -name '*.mp3' -o -name '*.m4a' -o -name '*.opus' | while IFS= read -r file; do
-          mv -n "$file" "$QURAN_DIR/" 2>/dev/null || true
-        done
-        rm -rf "$EXTRACT_DIR"
+    printf 'Downloading Quran audio files...\n'
+    if ! command -v unzip >/dev/null 2>&1; then
+      warn 'unzip is not installed; skipped the Quran audio download.'
+    elif retry 3 curl -L --fail "$DROPBOX_URL" -o "$ZIP_FILE"; then
+      printf 'Download complete. Extracting...\n'
+      if unzip -o -q "$ZIP_FILE" -d "$EXTRACT_DIR"; then
+        # Move the audio files up into ~/.Quran (existing files are not overwritten).
+        find "$EXTRACT_DIR" -type f \( -name '*.mp3' -o -name '*.m4a' -o -name '*.opus' \) -exec mv -n -- {} "$QURAN_DIR/" \;
+        printf 'Quran audio files ready in %s\n' "$QURAN_DIR"
+      else
+        warn 'could not extract the Quran audio zip; continuing without it.'
       fi
-      rm -f "$ZIP_FILE"
-      printf 'Quran audio files ready in %s\n' "$QURAN_DIR"
+      rm -rf -- "$EXTRACT_DIR" "$ZIP_FILE"
     else
-      warn 'unzip not installed; zip file saved to %s/%s' "$QURAN_DIR" "$ZIP_FILE"
+      rm -f -- "$ZIP_FILE"
+      warn 'failed to download the Quran audio files after 3 attempts; continuing without them.'
     fi
   else
-    warn 'Failed to download Quran audio files after 3 attempts; continuing without them.'
+    printf 'Skipping Quran audio download.\n'
   fi
+fi
+
+# --- Point the installed cliamp config at ~/.Quran ---
+# TOML does not expand $HOME, so the paths are filled in here.
+if [[ -f $CONFIG_FILE ]]; then
+  sed -i -e "s|^initial_directory = .*|initial_directory = \"$QURAN_DIR\"|" \
+         -e "s|^directory = .*|directory = \"$QURAN_DIR\"|" "$CONFIG_FILE"
 else
-  printf 'Skipping Quran audio download.\n'
-  mkdir -p "$QURAN_DIR"
+  warn "$CONFIG_FILE not found; cliamp paths were not set."
 fi
 
-# --- Create/Update cliamp config ---
-mkdir -p "$CONFIG_DIR" "$PLAYLIST_DIR"
-
-# The config file from config/cliamp/config.toml will be installed by 50-configs.bash
-# but we need to ensure the initial_directory uses $HOME (already done in config.toml)
-# Verify the installed config has the right path
-if [[ -f "$CONFIG_FILE" ]]; then
-  sed -i "s|initial_directory = \".*\"|initial_directory = \"$QURAN_DIR\"|" "$CONFIG_FILE"
-  sed -i "s|directory = \".*\"|directory = \"$QURAN_DIR\"|" "$CONFIG_FILE"
-fi
-
-# --- Create Quran playlist ---
+# --- Create the Quran playlist ---
 printf 'Creating Quran playlist...\n'
-if ! cliamp playlist list 2>/dev/null | grep -qE '^[[:space:]]*Quran[[:space:]]'; then
-  cliamp playlist create "Quran" --dir "$QURAN_DIR" 2>/dev/null || warn 'Failed to create Quran playlist (cliamp may need first run)'
-else
+if cliamp playlist list 2>/dev/null | grep -qE '^[[:space:]]*Quran[[:space:]]'; then
   printf 'Quran playlist already exists.\n'
+elif ! cliamp playlist create "Quran" --dir "$QURAN_DIR" 2>/dev/null; then
+  warn 'failed to create the Quran playlist (cliamp may need a first run).'
 fi
 
-# --- Create/Update desktop entry override ---
-mkdir -p "$APP_DIR"
-
-# Find source desktop entry
+# --- Desktop entry override ---
 SOURCE_APP=""
 for dir in \
   "$HOME/.local/share/applications" \
@@ -90,44 +88,36 @@ for dir in \
   /usr/share/applications
 do
   candidate="$dir/$APP_NAME"
-  if [[ -f "$candidate" && "$candidate" != "$APP_OVERRIDE" ]]; then
-    SOURCE_APP="$candidate"
+  if [[ -f $candidate && $candidate != "$APP_OVERRIDE" ]]; then
+    SOURCE_APP=$candidate
     break
   fi
 done
-
-if [[ -z "$SOURCE_APP" ]]; then
+if [[ -z $SOURCE_APP ]]; then
   SOURCE_APP=$(find /usr/share/applications /usr/local/share/applications -iname '*cliamp*.desktop' -print -quit 2>/dev/null || true)
 fi
 
-if [[ -n "$SOURCE_APP" && -f "$SOURCE_APP" ]]; then
-  if [[ -f "$APP_OVERRIDE" ]]; then
-    backup_if_present "$APP_OVERRIDE" "applications/$APP_NAME"
-  fi
-  cp "$SOURCE_APP" "$APP_OVERRIDE"
-
-  # Update Exec line
+if [[ -n $SOURCE_APP && -f $SOURCE_APP ]]; then
+  backup_if_present "$APP_OVERRIDE" "applications/$APP_NAME"
+  cp -- "$SOURCE_APP" "$APP_OVERRIDE"
   sed -i 's|^Exec=.*|Exec=cliamp --playlist Quran|' "$APP_OVERRIDE"
-
-  # Ensure DBusActivatable=false
   if grep -q '^DBusActivatable=' "$APP_OVERRIDE"; then
     sed -i 's/^DBusActivatable=.*/DBusActivatable=false/' "$APP_OVERRIDE"
   else
-    echo 'DBusActivatable=false' >> "$APP_OVERRIDE"
+    printf 'DBusActivatable=false\n' >> "$APP_OVERRIDE"
   fi
-
   chmod 644 "$APP_OVERRIDE"
   printf 'Desktop entry updated: %s\n' "$APP_OVERRIDE"
 else
-  warn 'Could not find cliamp desktop entry; skipping desktop override.'
+  warn 'could not find the cliamp desktop entry; skipped the desktop override.'
 fi
 
-# --- Add Fish function ---
-mkdir -p "$(dirname "$FISH_CONFIG")"
+# --- Fish function: plain `cliamp` starts the Quran playlist ---
+mkdir -p "$(dirname -- "$FISH_CONFIG")"
 touch "$FISH_CONFIG"
-
-if ! grep -Fq "$FISH_MARKER" "$FISH_CONFIG"; then
-  CLIAMP_BIN=$(command -v cliamp)
+if grep -Fq "$FISH_MARKER" "$FISH_CONFIG"; then
+  printf 'Fish function already present.\n'
+else
   cat >> "$FISH_CONFIG" <<EOF
 
 $FISH_MARKER
@@ -141,13 +131,10 @@ end
 # <<< cliamp-quran launcher <<<
 EOF
   printf 'Fish function added to %s\n' "$FISH_CONFIG"
-else
-  printf 'Fish function already present.\n'
 fi
 
 printf '\nCliamp Quran setup complete.\n'
-printf '  Config:     %s\n' "$CONFIG_FILE"
-printf '  Audio dir:  %s\n' "$QURAN_DIR"
-printf '  Desktop:    %s\n' "$APP_OVERRIDE"
-printf '  Fish func:  %s\n' "$FISH_CONFIG"
-printf 'Reload Fish with: source ~/.config/fish/config.fish\n'
+printf '  Config:    %s\n' "$CONFIG_FILE"
+printf '  Audio dir: %s\n' "$QURAN_DIR"
+printf '  Desktop:   %s\n' "$APP_OVERRIDE"
+printf '  Fish:      %s (run: source ~/.config/fish/config.fish)\n' "$FISH_CONFIG"
