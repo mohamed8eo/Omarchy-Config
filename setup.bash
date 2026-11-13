@@ -52,10 +52,12 @@ printf '  Run omarchy update first (skipped with a warning if it fails)\n'
 printf '  Install dev environments: Node.js, Go, Python, Rust (omarchy install dev-env)\n'
 printf '  Install Codex (omarchy install ai chatgpt)\n'
 printf '  Install Ghostty (omarchy install terminal ghostty) and make it the default terminal\n'
-printf '  Apply the Helium hardware video acceleration fix (launcher wrapper, flags, desktop entry)\n'
+printf '  Apply the Helium hardware video acceleration fix (launcher wrapper, flags, desktop entry) and set Helium as the default browser\n'
 printf '  Install packages listed in packages.toml and omarchy-fish\n'
 printf '  Set Fish as this user’s login shell\n'
 printf '  Set the Catppuccin theme and copy repo images\n'
+printf '  Install Neovim config from mohamed8eo/nvim_config (backs up ~/.config/nvim to ~/.config/nvim-bak)\n'
+printf '  Create ~/personal and clone ThePrimeagen/harpoon and ThePrimeagen/99 into it\n'
 printf '  Remove these web app launchers if present: Google Contacts, Google Maps, Google Messages, Google Photos, HEY, X, Zoom, Basecamp\n'
 printf '  Install Omarchy plugins at the end: lock-designs, omarchy-spotlight, VoxType OSD, island (and switch the bar to island)\n'
 printf '  Replace these files (existing targets will be backed up first):\n'
@@ -148,6 +150,50 @@ while IFS= read -r -d '' source; do
   copy_file "$source" "$HOME/.config/omarchy/backgrounds/catppuccin/$name" "images/$name"
 done < <(find "$REPO_DIR/images" -maxdepth 1 -type f -print0)
 
+# Neovim config from mohamed8eo/nvim_config.
+# Backs up the current ~/.config/nvim to ~/.config/nvim-bak, clones the repo, and installs it.
+printf '\nInstalling Neovim config...\n'
+if command -v git >/dev/null 2>&1; then
+  NVIM_CONFIG_DIR="$HOME/.config/nvim"
+  NVIM_BACKUP_DIR="$HOME/.config/nvim-bak"
+  NVIM_TMP_DIR=$(mktemp -d)
+  if git clone --depth 1 https://github.com/mohamed8eo/nvim_config.git "$NVIM_TMP_DIR/nvim" </dev/tty; then
+    if [[ -e $NVIM_CONFIG_DIR || -L $NVIM_CONFIG_DIR ]]; then
+      rm -rf -- "$NVIM_BACKUP_DIR"
+      mv -- "$NVIM_CONFIG_DIR" "$NVIM_BACKUP_DIR"
+      printf 'Backed up %s to %s\n' "$NVIM_CONFIG_DIR" "$NVIM_BACKUP_DIR"
+    fi
+    mkdir -p "$(dirname -- "$NVIM_CONFIG_DIR")"
+    cp -a -- "$NVIM_TMP_DIR/nvim" "$NVIM_CONFIG_DIR"
+    rm -rf -- "$NVIM_CONFIG_DIR/.git"
+    printf 'Installed Neovim config at %s\n' "$NVIM_CONFIG_DIR"
+  else
+    printf 'Warning: failed to clone mohamed8eo/nvim_config; skipping Neovim config install.\n' >&2
+  fi
+  rm -rf -- "$NVIM_TMP_DIR"
+else
+  printf 'Warning: git not found; skipping Neovim config install.\n' >&2
+fi
+
+# Personal repos.
+printf '\nSetting up ~/personal repos...\n'
+if command -v git >/dev/null 2>&1; then
+  PERSONAL_DIR="$HOME/personal"
+  mkdir -p "$PERSONAL_DIR"
+  for repo in harpoon 99; do
+    target="$PERSONAL_DIR/$repo"
+    if [[ -e $target ]]; then
+      printf 'Personal repo already present, skipping: %s\n' "$target"
+    elif git clone --depth 1 "https://github.com/ThePrimeagen/$repo.git" "$target" </dev/tty; then
+      printf 'Cloned %s\n' "$target"
+    else
+      printf 'Warning: failed to clone ThePrimeagen/%s; continuing.\n' "$repo" >&2
+    fi
+  done
+else
+  printf 'Warning: git not found; skipping ~/personal repos.\n' >&2
+fi
+
 
 # Helium hardware video decode fix, adapted from omarchy-chromium-hardware-acceleration-fix.md
 # (that note targets Brave). The wrapper forces Mesa EGL and the right VA-API driver; the
@@ -203,8 +249,19 @@ FLAGS
   else
     printf 'Warning: %s not found; skipped the desktop entry override.\n' "$HELIUM_DESKTOP_SRC" >&2
   fi
+
+  # Set Helium as the default browser.
+  if command -v xdg-settings >/dev/null 2>&1; then
+    if xdg-settings set default-web-browser helium-browser.desktop; then
+      printf 'Default browser set to Helium (helium-browser.desktop).\n'
+    else
+      printf 'Warning: could not set Helium as the default browser.\n' >&2
+    fi
+  else
+    printf 'Warning: xdg-settings not found; could not set Helium as the default browser.\n' >&2
+  fi
 else
-  printf '\nHelium is not installed; skipping the hardware acceleration fix.\n'
+  printf '\nHelium is not installed; skipping the hardware acceleration fix and default browser setup.\n'
 fi
 
 # Ghostty as the default terminal. Omarchy launches terminals through xdg-terminal-exec,
@@ -261,10 +318,6 @@ if run_optional 'qylock-oma' omarchy plugin add https://github.com/mjtiempo/qylo
 fi
 
 run_optional 'omarchy-spotlight' omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable || true
-
-if run_optional 'VoxType OSD' omarchy plugin add https://github.com/Blizl/Omarchy-VoxType-OSD.git --enable; then
-  run_optional 'VoxType OSD setup' "$HOME/.config/omarchy/plugins/blizl.voxtype-osd/bin/setup" || true
-fi
 
 if run_optional 'island plugin' omarchy plugin add https://github.com/mohamed8eo/island.git; then
   run_optional 'island bar' omarchy bar use guilhermerisu.island || true
