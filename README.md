@@ -12,20 +12,53 @@ curl -fsSL https://raw.githubusercontent.com/mohamed8eo/Omarchy-Config/main/inst
 
 The small entrypoint clones the latest `main` branch into a temporary directory, then runs `setup.bash` with the full repository available. The temporary checkout is removed when the installer exits.
 
-## Package manifest
+From a local checkout, run `./setup.bash`.
 
-Add package names to `packages.toml`:
+## Repository layout
 
-```toml
-pacman = ["example-pacman-package"]
-aur = ["example-aur-package"]
+```
+.
+├── install.bash        # curl entrypoint (clones the repo, runs setup.bash)
+├── setup.bash          # orchestrator: loads lib/ and runs steps/ in order
+├── packages.toml       # pacman / AUR package manifest
+├── config/             # mirrors ~/.config, every file here gets installed
+│   ├── ghostty/config
+│   ├── hypr/…
+│   ├── cliamp/config.toml
+│   ├── starship.toml
+│   └── tmux/tmux.conf
+├── wallpapers/         # copied to ~/.config/omarchy/backgrounds/catppuccin/
+├── docs/               # notes (Helium/Chromium hardware acceleration fix)
+├── lib/common.bash     # shared helpers: errors, retries, backups
+└── steps/              # one file per setup step, run in filename order
+    ├── 00-checks.bash      preflight checks + packages.toml parsing
+    ├── 10-plan.bash        preview and confirmation
+    ├── 20-packages.bash    omarchy update, dev envs, Codex, packages
+    ├── 30-shell.bash       Fish as login shell (wrong password is retried)
+    ├── 40-terminal.bash    Ghostty + default terminal
+    ├── 45-browser.bash     Helium hardware acceleration fix + default browser
+    ├── 50-configs.bash     theme, config/ files, wallpapers
+    ├── 55-dev.bash         Neovim config + ~/personal repos
+    ├── 60-webapps.bash     remove unwanted web app launchers
+    ├── 70-plugins.bash     Omarchy plugins
+    └── 90-finish.bash      summary + restart prompt
 ```
 
-The installer runs `omarchy update` first; if the update fails it prints a warning and continues. It then installs Node.js, Go, Python and Rust (`omarchy install dev-env`), Codex (`omarchy install ai chatgpt`), the listed packages and `omarchy-fish`. AUR installation requires Omarchy's AUR package workflow to be available.
+### Adding things
+
+- **A config file:** put it under `config/` using its path relative to `~/.config`, for example `config/foo/bar.conf` is installed to `~/.config/foo/bar.conf`. It is previewed, backed up and installed automatically, with no script edit.
+- **A package:** add it to `packages.toml`:
+
+  ```toml
+  pacman = ["example-pacman-package"]
+  aur = ["example-aur-package"]
+  ```
+
+- **A setup step:** add `steps/NN-name.bash`. Steps are sourced in filename order and can use the helpers in `lib/common.bash` (`warn`, `retry`, `copy_file`, `backup_if_present`, `run_optional`).
 
 ## Desktop background
 
-The installer copies every file from `images/` into `~/.config/omarchy/backgrounds/catppuccin/` and then sets `139396752_p0.jpg` as the desktop background using `omarchy theme bg set`. To use a different image, export `WALLPAPER_IMAGE` with its filename before running the installer:
+The installer copies every file from `wallpapers/` into `~/.config/omarchy/backgrounds/catppuccin/` and then sets `139396752_p0.jpg` as the desktop background using `omarchy theme bg set`. To use a different image, export `WALLPAPER_IMAGE` with its filename before running the installer:
 
 ```bash
 export WALLPAPER_IMAGE=tree.jpg
@@ -41,19 +74,23 @@ omarchy theme bg set ~/.config/omarchy/backgrounds/catppuccin/tree.jpg
 ## What it changes
 
 - Shows a file-by-file preview and asks before making system changes.
-- Runs `omarchy update` first. If it fails (for example a broken mirror), it warns and continues. Other failing steps still stop the setup, except Ghostty and the plugins, which are skipped.
-- Applies the Catppuccin Omarchy theme and copies `images/` into `~/.config/omarchy/backgrounds/catppuccin/`.
-- Sets `139396752_p0.jpg` as the desktop background with `omarchy theme bg set` (override with `WALLPAPER_IMAGE=<filename from images/>`).
-- Backs up existing destination files under `~/.local/state/omarchy-setup/backups/<timestamp>/` before replacement.
-- Copies same-named files from `hypr/` into `~/.config/hypr/`.
-- Copies `starship.toml` to `~/.config/starship.toml` and `tmux.conf` to `~/.config/tmux/tmux.conf`.
+- Runs `omarchy update` first. If it fails (for example a broken mirror), it warns and continues.
+- Installs Node.js, Go, Python and Rust (`omarchy install dev-env`, skipping any already installed), Codex (`omarchy install ai chatgpt`), the packages in `packages.toml` (`httpie`, `pnpm`, `ripgrep`, `cliamp`, `claude-desktop`, `helium-browser-bin`) and `omarchy-fish`.
+- Changes the account login shell to Fish. A wrong password is retried (3 attempts); if it still fails the setup continues and the summary shows the `chsh` command to run later.
+- Installs Ghostty with `omarchy install terminal ghostty` and puts it first in `~/.config/xdg-terminals.list` so it is the default terminal (the old file is backed up).
+- Installs Helium's hardware video acceleration fix from `docs/omarchy-chromium-hardware-acceleration-fix.md`, adapted for Helium (wrapper at `~/.local/bin/omarchy-launch-helium`, flags in `~/.config/helium-browser-flags.conf`, and a `helium-browser.desktop` override in `~/.local/share/applications/`), and sets Helium as the default browser. Verify at `chrome://gpu` (Video Decode should say Hardware accelerated).
+- Applies the Catppuccin Omarchy theme and installs everything in `config/` into `~/.config/` (Hyprland, Ghostty, cliamp, Starship, tmux). Existing files are backed up under `~/.local/state/omarchy-setup/backups/<timestamp>/` before replacement. Ghostty's existing `~/.config/ghostty/config` is also kept as `~/.config/ghostty/config-bak` (an existing `config-bak` is never overwritten).
+- Copies `wallpapers/` and sets the desktop background.
 - Installs the Neovim config from [`mohamed8eo/nvim_config`](https://github.com/mohamed8eo/nvim_config): if `~/.config/nvim` exists it is moved to `~/.config/nvim-bak`, then the cloned config is copied to `~/.config/nvim`.
 - Creates `~/personal` and clones [`ThePrimeagen/harpoon`](https://github.com/ThePrimeagen/harpoon) and [`ThePrimeagen/99`](https://github.com/ThePrimeagen/99) into it (skipping any that already exist).
-- Installs dev environments (Node.js, Go, Python, Rust) with `omarchy install dev-env`, skipping any already installed via mise.
-- Installs Codex with `omarchy install ai chatgpt`.
-- Installs `httpie`, `pnpm` (pacman) and `cliamp`, `claude-desktop` (AUR) from `packages.toml`.
-- Installs Helium (`helium-browser-bin`, AUR), applies the hardware video acceleration fix from `omarchy-chromium-hardware-acceleration-fix.md` adapted for Helium (wrapper at `~/.local/bin/omarchy-launch-helium`, flags in `~/.config/helium-browser-flags.conf`, and a `helium-browser.desktop` override in `~/.local/share/applications/`), and sets Helium as the default browser (`xdg-settings`). Verify at `chrome://gpu` (Video Decode should say Hardware accelerated).
-- Installs Ghostty with `omarchy install terminal ghostty` and puts it first in `~/.config/xdg-terminals.list` so it is the default terminal (the old file is backed up).
-- Removes these web app launchers if they exist: Google Contacts, Google Maps, Google Messages, Google Photos, HEY, X, Zoom, Basecamp (`omarchy webapp remove <name>`). Missing ones are skipped.
-- At the end, installs the Omarchy plugins `lock-designs`, `omarchy-spotlight`, `Omarchy-VoxType-OSD` (plus its setup script) and `island` (then runs `omarchy bar use guilhermerisu.island`). A failing plugin step is reported and skipped.
-- Installs `omarchy-fish` and changes the account login shell to Fish.
+- Removes these web app launchers if they exist: Google Contacts, Google Maps, Google Messages, Google Photos, HEY, X, Zoom, Basecamp (`omarchy webapp remove <name>`).
+- Installs the Omarchy plugins `qylock-oma`, `omarchy-spotlight` and `island` (then runs `omarchy bar use guilhermerisu.island`). A failing plugin step is reported and skipped.
+- Ends with a summary (backups, shell status, warnings) and a Yes/No prompt to restart the PC.
+
+## Error handling
+
+- A failing step stops the setup and prints the step, file:line and exact command that failed; re-run after fixing it.
+- Network operations (`git clone`, the Helium key import) are retried 3 times.
+- Optional parts (update, Ghostty install, Helium fix, wallpaper, repos, web apps, plugins) only produce warnings, which are listed in the final summary.
+- The script checks for an internet connection first (`SKIP_NET_CHECK=1` skips the check).
+- Temporary files are cleaned up on success, failure and Ctrl+C.
