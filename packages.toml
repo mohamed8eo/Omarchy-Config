@@ -1,7 +1,7 @@
 # Add package names here. Keep each category as a TOML array.
 # Pacman packages are installed with: omarchy pkg add
-pacman = ["httpie", "pnpm", "ripgrep"]
+pacman = ["httpie", "pnpm", "ripgrep", "telegram-desktop"]
 
 # AUR packages are installed with: omarchy pkg aur add
 # Omarchy must provide a working AUR helper for this operation.
-aur = ["cliamp", "claude-desktop", "helium-browser-bin"]
+aur = ["cliamp", "claude-desktop", "helium-browser-bin", "sioyek-dev"]

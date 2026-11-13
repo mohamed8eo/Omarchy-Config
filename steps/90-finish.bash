@@ -8,6 +8,9 @@ for sibling_file in "${SIBLING_BACKUP_FILES[@]}"; do
     printf 'Original kept at:          %s\n' "$HOME/.config/$sibling_file-bak"
   fi
 done
+if ((SSH_KEY_CREATED)); then
+  printf 'New SSH public key:       %s.pub (add it at https://github.com/settings/ssh/new)\n' "$SSH_KEY"
+fi
 if ((LOGIN_SHELL_OK)); then
   printf 'Fish is your login shell (takes effect on your next login).\n'
 else

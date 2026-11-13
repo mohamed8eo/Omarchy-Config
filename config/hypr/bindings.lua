@@ -12,7 +12,6 @@ hl.unbind("SUPER + ALT + SPACE") -- apps finder
 hl.unbind("SUPER + SHIFT + P")   --  Google photo
 hl.unbind("SUPER + SHIFT + X")   --  Twitter
 
-
 -- ==========================================
 -- App Launchers
 -- ==========================================
@@ -28,7 +27,6 @@ hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd("omarchy-launch-or-focus ^Telegram$
     { description = "Telegram" })
 hl.bind("SUPER + SHIFT + R", hl.dsp.exec_cmd("omarchy-launch-or-focus ^Sioyek$ \"uwsm-app -- sioyek\""),
     { description = "Sioyek" })
-
 
 -- ==========================================
 -- Web App Shortcuts

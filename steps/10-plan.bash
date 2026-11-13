@@ -7,6 +7,7 @@ printf '  Install dev environments: Node.js, Go, Python, Rust (omarchy install d
 printf '  Install Codex (omarchy install ai chatgpt)\n'
 printf '  Install packages listed in packages.toml and omarchy-fish\n'
 printf '  Set Fish as this user’s login shell (wrong password is retried)\n'
+printf '  Set up Git (omarchy setup git) and create an ed25519 SSH key (asks for the email; an existing key is never overwritten)\n'
 printf '  Install Ghostty (omarchy install terminal ghostty) and make it the default terminal\n'
 printf '  Apply the Helium hardware video acceleration fix (launcher wrapper, flags, desktop entry) and set Helium as the default browser\n'
 printf '  Set the Catppuccin theme and install everything under config/ into ~/.config\n'

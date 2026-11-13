@@ -91,3 +91,34 @@ update-desktop-database ~/.local/share/applications
 1. Launch your browser.
 2. Navigate to `brave://gpu` (or `chrome://gpu`).
 3. Check **Video Decode**—it should now display **Hardware accelerated**.
+
+
+# ==========================================
+# Helium Browser Configuration
+# ==========================================
+
+setup_helium_browser() {
+    printf '\nConfiguring Helium as default browser...\n'
+
+    local browser="helium.desktop"
+
+    # Verify Helium is installed
+    if [[ ! -f "/usr/share/applications/$browser" ]]; then
+        echo "Helium desktop entry not found. Skipping."
+        return 1
+    fi
+
+    # Set default browser using GIO
+    gio mime x-scheme-handler/http "$browser"
+    gio mime x-scheme-handler/https "$browser"
+    gio mime text/html "$browser"
+
+    # Set additional MIME associations
+    xdg-mime default "$browser" application/xhtml+xml
+    xdg-mime default "$browser" application/xhtml_xml
+
+    # Refresh desktop database
+    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+
+    echo "Helium browser configuration completed."
+}

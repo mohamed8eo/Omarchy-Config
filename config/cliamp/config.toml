@@ -1,13 +1,16 @@
-visualizer = "BarsDot"
+playlist = "Quran"
+initial_directory = "$HOME/.Quran"
 
+visualizer = "BarsDot"
 theme = ""
 eq_preset = "Flat"
 eq = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 repeat = "All"
+
 [ytmusic]
-enabled      = true
+enabled = false
 cookies_from = ""
 
 [downloads]
-directory = "/home/mohamed/.Quran"
+directory = "$HOME/.Quran"

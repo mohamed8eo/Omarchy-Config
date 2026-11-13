@@ -35,6 +35,7 @@ From a local checkout, run `./setup.bash`.
     ├── 10-plan.bash        preview and confirmation
     ├── 20-packages.bash    omarchy update, dev envs, Codex, packages
     ├── 30-shell.bash       Fish as login shell (wrong password is retried)
+    ├── 35-git.bash         Git setup + SSH key
     ├── 40-terminal.bash    Ghostty + default terminal
     ├── 45-browser.bash     Helium hardware acceleration fix + default browser
     ├── 50-configs.bash     theme, config/ files, wallpapers
@@ -77,6 +78,7 @@ omarchy theme bg set ~/.config/omarchy/backgrounds/catppuccin/tree.jpg
 - Runs `omarchy update` first. If it fails (for example a broken mirror), it warns and continues.
 - Installs Node.js, Go, Python and Rust (`omarchy install dev-env`, skipping any already installed), Codex (`omarchy install ai chatgpt`), the packages in `packages.toml` (`httpie`, `pnpm`, `ripgrep`, `cliamp`, `claude-desktop`, `helium-browser-bin`) and `omarchy-fish`.
 - Changes the account login shell to Fish. A wrong password is retried (3 attempts); if it still fails the setup continues and the summary shows the `chsh` command to run later.
+- Sets up Git with `omarchy setup git`, then asks for an email (pre-filled from your Git config, or from `SSH_EMAIL` if set) and runs `ssh-keygen -t ed25519 -C "<email>"` to create `~/.ssh/id_ed25519`. An existing key is never overwritten, and leaving the email empty skips the key. The public key is printed so you can add it at <https://github.com/settings/ssh/new>.
 - Installs Ghostty with `omarchy install terminal ghostty` and puts it first in `~/.config/xdg-terminals.list` so it is the default terminal (the old file is backed up).
 - Installs Helium's hardware video acceleration fix from `docs/omarchy-chromium-hardware-acceleration-fix.md`, adapted for Helium (wrapper at `~/.local/bin/omarchy-launch-helium`, flags in `~/.config/helium-browser-flags.conf`, and a `helium-browser.desktop` override in `~/.local/share/applications/`), and sets Helium as the default browser. Verify at `chrome://gpu` (Video Decode should say Hardware accelerated).
 - Applies the Catppuccin Omarchy theme and installs everything in `config/` into `~/.config/` (Hyprland, Ghostty, cliamp, Starship, tmux). Existing files are backed up under `~/.local/state/omarchy-setup/backups/<timestamp>/` before replacement. Ghostty's existing `~/.config/ghostty/config` is also kept as `~/.config/ghostty/config-bak` (an existing `config-bak` is never overwritten).
