@@ -20,8 +20,13 @@ set_login_shell() {
     LOGIN_SHELL_OK=1
     return 0
   fi
+  run_cmd "Changing login shell to $fish_path" true
+  if _dry_run; then
+    LOGIN_SHELL_OK=1
+    return 0
+  fi
   for ((attempt = 1; attempt <= max_attempts; attempt++)); do
-    printf '\nChanging login shell to %s (attempt %d/%d)...\n' "$fish_path" "$attempt" "$max_attempts"
+    printf 'Attempt %d/%d...\n' "$attempt" "$max_attempts"
     if chsh -s "$fish_path" "$USER" </dev/tty; then
       printf 'Login shell changed to %s.\n' "$fish_path"
       LOGIN_SHELL_OK=1

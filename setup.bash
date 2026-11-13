@@ -15,6 +15,10 @@ set -Eeuo pipefail
 INSTALLER_NAME=omarchy-setup
 BACKUP_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy-setup/backups"
 
+# Dry-run mode: set DRY_RUN=1 to preview changes without making them.
+# Example: DRY_RUN=1 ./setup.bash
+DRY_RUN=${DRY_RUN:-0}
+
 # Filename from wallpapers/ to use as the desktop background after setup.
 # Defaults to 139396752_p0.jpg; override it to use a different image.
 # Example: WALLPAPER_IMAGE=tree.jpg ./setup.bash

@@ -27,6 +27,11 @@ elif ((${#FAILED_PLUGINS[@]} == 0)); then
 fi
 printf '===============================================\n\n'
 
+if _dry_run; then
+  printf '[DRY-RUN] Would prompt for restart. Skipping.\n'
+  return 0
+fi
+
 # Restart prompt: a Yes/No button when gum (shipped with Omarchy) is available,
 # otherwise a plain y/N question.
 ask_restart() {

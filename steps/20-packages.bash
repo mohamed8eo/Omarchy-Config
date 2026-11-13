@@ -1,10 +1,17 @@
 # shellcheck shell=bash
 # Step 20: system update, dev environments, Codex, and packages from packages.toml.
 
-printf '\nRunning omarchy update...\n'
-if ! omarchy update </dev/tty; then
-  warn 'omarchy update failed; skipped it and continued.'
-fi
+# Helper to run omarchy commands that need /dev/tty for password prompts
+# In dry-run mode, don't use /dev/tty
+_omarchy() {
+  if _dry_run; then
+    "$@"
+  else
+    "$@" </dev/tty
+  fi
+}
+
+run_cmd 'Running omarchy update' _omarchy omarchy update || warn 'omarchy update failed; continuing.'
 
 # Node goes first: the Codex launcher needs the mise-managed Node.
 install_dev_env() {
@@ -12,8 +19,7 @@ install_dev_env() {
   if mise where "$tool" >/dev/null 2>&1; then
     printf 'Skipping %s (already installed via mise).\n' "$name"
   else
-    printf '\nInstalling %s...\n' "$name"
-    omarchy install dev-env "$name" </dev/tty
+    run_cmd "Installing $name" _omarchy omarchy install dev-env "$name"
   fi
 }
 install_dev_env node node
@@ -22,20 +28,22 @@ install_dev_env python python
 if command -v rustc >/dev/null || mise where rust >/dev/null 2>&1; then
   printf 'Skipping rust (already installed).\n'
 else
-  printf '\nInstalling rust...\n'
-  omarchy install dev-env rust </dev/tty
+  run_cmd 'Installing rust' _omarchy omarchy install dev-env rust
 fi
 
-printf '\nInstalling Codex...\n'
-omarchy install ai chatgpt </dev/tty
+run_cmd 'Installing Codex' _omarchy omarchy install ai chatgpt
 
-if ((${#PACMAN_PACKAGES[@]})); then omarchy pkg add "${PACMAN_PACKAGES[@]}" </dev/tty; fi
+if ((${#PACMAN_PACKAGES[@]})); then
+  run_cmd "Installing pacman packages: ${PACMAN_PACKAGES[*]}" _omarchy omarchy pkg add "${PACMAN_PACKAGES[@]}"
+fi
+
 if [[ " ${AUR_PACKAGES[*]:-} " == *" helium-browser-bin "* ]]; then
   # The AUR package verifies Helium's PGP signature, so its signing key must be known.
-  printf '\nImporting Helium signing key...\n'
-  if ! retry 3 gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E </dev/tty; then
-    warn 'could not import the Helium signing key; the Helium install may fail.'
-  fi
+  run_cmd 'Importing Helium signing key' retry 3 gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E || warn 'could not import Helium signing key; Helium install may fail.'
 fi
-if ((${#AUR_PACKAGES[@]})); then omarchy pkg aur add "${AUR_PACKAGES[@]}" </dev/tty; fi
-omarchy pkg add omarchy-fish </dev/tty
+
+if ((${#AUR_PACKAGES[@]})); then
+  run_cmd "Installing AUR packages: ${AUR_PACKAGES[*]}" _omarchy omarchy pkg aur add "${AUR_PACKAGES[@]}"
+fi
+
+run_cmd 'Installing omarchy-fish' _omarchy omarchy pkg add omarchy-fish

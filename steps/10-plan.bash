@@ -22,5 +22,10 @@ find "$REPO_DIR/config" -type f -printf '    ~/.config/%P\n' | sort
 find "$REPO_DIR/wallpapers" -maxdepth 1 -type f -printf '    ~/.config/omarchy/backgrounds/catppuccin/%f\n' | sort
 printf '  Pacman: %s\n' "${PACMAN_PACKAGES[*]:-(none listed)}"
 printf '  AUR:    %s\n' "${AUR_PACKAGES[*]:-(none listed)}"
-read -r -p 'Continue? [y/N] ' answer </dev/tty
-[[ $answer == [yY] || $answer == [yY][eE][sS] ]] || { printf 'Cancelled.\n'; exit 0; }
+
+if _dry_run; then
+  printf '[DRY-RUN] Would prompt for confirmation. Skipping.\n'
+else
+  read -r -p 'Continue? [y/N] ' answer </dev/tty
+  [[ $answer == [yY] || $answer == [yY][eE][sS] ]] || { printf 'Cancelled.\n'; exit 0; }
+fi

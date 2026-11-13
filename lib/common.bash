@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # Shared helpers for setup.bash and steps/*.bash. This file is sourced, never executed.
-# Expects INSTALLER_NAME, BACKUP_ROOT and REPO_DIR to be set by setup.bash first.
+# Expects INSTALLER_NAME, BACKUP_ROOT, REPO_DIR and DRY_RUN to be set by setup.bash first.
 
 # ---- Shared state ---------------------------------------------------------
 CURRENT_STEP=init          # name of the step file being run (shown if something fails)
@@ -15,6 +15,17 @@ SIBLING_BACKUP_FILES=("ghostty/config")
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
+
+# ---- Dry-run helpers -------------------------------------------------------
+# In dry-run mode, print what would happen without making changes.
+_dry_run() { ((DRY_RUN)); }
+
+_dry() {
+  _dry_run || return 0
+  local fmt=$1
+  shift
+  printf '[DRY-RUN] '"$fmt"'\n' "$@" >&2
+}
 
 # ---- Messages -------------------------------------------------------------
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
@@ -62,6 +73,7 @@ trap 'on_error "$LINENO" "$BASH_COMMAND" "${BASH_SOURCE[0]:-}"' ERR
 # backup_if_present <target> <relative-path-inside-backup-dir>
 backup_if_present() {
   local target=$1 relative=$2
+  _dry_run && { _dry "Would backup %s to %s/%s" "$target" "$BACKUP_DIR" "$relative"; return; }
   if [[ -d $target ]]; then
     die "Destination is a directory, expected a file: $target"
   fi
@@ -75,6 +87,7 @@ backup_if_present() {
 # copy_file <source> <target> <relative-path-inside-backup-dir>
 copy_file() {
   local source=$1 target=$2 relative=$3
+  _dry_run && { _dry "Would copy %s -> %s (backup: %s)" "$source" "$target" "$relative"; return; }
   backup_if_present "$target" "$relative"
   mkdir -p "$(dirname -- "$target")"
   cp --remove-destination -f -- "$source" "$target"
@@ -87,6 +100,7 @@ copy_file() {
 copy_file_with_sibling_backup() {
   local source=$1 target=$2 relative=$3
   local bak="$target-bak"
+  _dry_run && { _dry "Would copy %s -> %s with sibling backup (bak: %s)" "$source" "$target" "$bak"; return; }
   [[ ! -d $target ]] || die "Destination is a directory, expected a file: $target"
   mkdir -p "$(dirname -- "$target")"
   if [[ -e $target || -L $target ]]; then
@@ -101,11 +115,25 @@ copy_file_with_sibling_backup() {
   printf 'Installed %s\n' "$target"
 }
 
+# run_cmd <description> <command...>
+# In dry-run: prints what would run. In normal: executes.
+run_cmd() {
+  local desc=$1
+  shift
+  _dry_run && { _dry "%s: %s" "$desc" "$*"; return; }
+  printf '%s...\n' "$desc"
+  "$@"
+}
+
 # ---- Optional steps -------------------------------------------------------
 # run_optional <label> <command...>: a failure is reported and skipped, never fatal.
 run_optional() {
   local label=$1
   shift
+  if _dry_run; then
+    _dry 'Optional step: %s (command: %s)' "$label" "$*"
+    return 0
+  fi
   printf '\n%s...\n' "$label"
   if ! "$@" </dev/tty; then
     printf 'Warning: "%s" failed; continuing.\n' "$label" >&2

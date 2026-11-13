@@ -5,15 +5,16 @@
 # launchers use it. Skipped if Helium is not installed.
 
 if command -v helium-browser >/dev/null 2>&1; then
-  printf '\nApplying Helium hardware acceleration fix...\n'
+  run_cmd 'Applying Helium hardware acceleration fix' true
   HELIUM_WRAPPER="$HOME/.local/bin/omarchy-launch-helium"
   HELIUM_FLAGS="$HOME/.config/helium-browser-flags.conf"
   HELIUM_DESKTOP_SRC=${HELIUM_DESKTOP_SRC:-/usr/share/applications/helium-browser.desktop}
   HELIUM_DESKTOP="$HOME/.local/share/applications/helium-browser.desktop"
 
   backup_if_present "$HELIUM_WRAPPER" local-bin/omarchy-launch-helium
-  mkdir -p "$(dirname -- "$HELIUM_WRAPPER")"
-  cat > "$HELIUM_WRAPPER" <<'WRAPPER'
+  run_cmd "Creating wrapper $HELIUM_WRAPPER" mkdir -p "$(dirname -- "$HELIUM_WRAPPER")"
+  if ! _dry_run; then
+    cat > "$HELIUM_WRAPPER" <<'WRAPPER'
 #!/bin/bash
 MESA_EGL=/usr/share/glvnd/egl_vendor.d/50_mesa.json
 [[ -f $MESA_EGL ]] && export __EGL_VENDOR_LIBRARY_FILENAMES="$MESA_EGL"
@@ -27,71 +28,68 @@ fi
 
 exec /usr/bin/helium-browser "$@"
 WRAPPER
-  chmod +x "$HELIUM_WRAPPER"
-  printf 'Installed %s\n' "$HELIUM_WRAPPER"
+    chmod +x "$HELIUM_WRAPPER"
+    printf 'Installed %s\n' "$HELIUM_WRAPPER"
+  fi
 
   backup_if_present "$HELIUM_FLAGS" helium-browser-flags.conf
-  mkdir -p "$(dirname -- "$HELIUM_FLAGS")"
-  cat > "$HELIUM_FLAGS" <<'FLAGS'
+  run_cmd "Creating flags file $HELIUM_FLAGS" mkdir -p "$(dirname -- "$HELIUM_FLAGS")"
+  if ! _dry_run; then
+    cat > "$HELIUM_FLAGS" <<'FLAGS'
 --ozone-platform=wayland
 --ozone-platform-hint=wayland
 --password-store=gnome-libsecret
 --enable-features=TouchpadOverscrollHistoryNavigation
 FLAGS
-  printf 'Installed %s\n' "$HELIUM_FLAGS"
+    printf 'Installed %s\n' "$HELIUM_FLAGS"
+  fi
 
   if [[ -r $HELIUM_DESKTOP_SRC ]]; then
     backup_if_present "$HELIUM_DESKTOP" applications/helium-browser.desktop
-    mkdir -p "$(dirname -- "$HELIUM_DESKTOP")"
-    sed -E "s#^Exec=(/usr/bin/)?(helium-browser|chromium)#Exec=$HELIUM_WRAPPER#" "$HELIUM_DESKTOP_SRC" > "$HELIUM_DESKTOP"
-    if grep -qF "Exec=$HELIUM_WRAPPER" "$HELIUM_DESKTOP"; then
-      printf 'Installed %s\n' "$HELIUM_DESKTOP"
-    else
-      warn "no Exec line was rewritten in $HELIUM_DESKTOP; launchers may skip the wrapper."
-    fi
-    if command -v update-desktop-database >/dev/null 2>&1; then
-      update-desktop-database "$(dirname -- "$HELIUM_DESKTOP")" || true
+    run_cmd "Creating desktop override $HELIUM_DESKTOP" mkdir -p "$(dirname -- "$HELIUM_DESKTOP")"
+    if ! _dry_run; then
+      sed -E "s#^Exec=(/usr/bin/)?(helium-browser|chromium)#Exec=$HELIUM_WRAPPER#" "$HELIUM_DESKTOP_SRC" > "$HELIUM_DESKTOP"
+      if grep -qF "Exec=$HELIUM_WRAPPER" "$HELIUM_DESKTOP"; then
+        printf 'Installed %s\n' "$HELIUM_DESKTOP"
+      else
+        warn "no Exec line was rewritten in $HELIUM_DESKTOP; launchers may skip the wrapper."
+      fi
+      if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database "$(dirname -- "$HELIUM_DESKTOP")" || true
+      fi
     fi
   else
     warn "$HELIUM_DESKTOP_SRC not found; skipped the desktop entry override."
   fi
 
   # Set Helium as the default browser (multiple methods for compatibility).
-  printf 'Setting Helium as default browser...\n'
-  local browser="helium-browser.desktop"
-  local success=0
+  run_cmd 'Setting Helium as default browser' true
+  browser="helium-browser.desktop"
+  success=0
 
   # Method 1: xdg-settings (standard)
   if command -v xdg-settings >/dev/null 2>&1; then
-    if xdg-settings set default-web-browser "$browser"; then
-      printf '  xdg-settings: OK\n'
-      success=1
-    else
-      printf '  xdg-settings: failed\n'
-    fi
+    run_cmd "xdg-settings set default-web-browser $browser" xdg-settings set default-web-browser "$browser" && success=1 || true
   fi
 
   # Method 2: gio mime (GNOME/GTK apps)
   if command -v gio >/dev/null 2>&1; then
-    gio mime x-scheme-handler/http "$browser" 2>/dev/null && printf '  gio http: OK\n' || printf '  gio http: failed\n'
-    gio mime x-scheme-handler/https "$browser" 2>/dev/null && printf '  gio https: OK\n' || printf '  gio https: failed\n'
-    gio mime text/html "$browser" 2>/dev/null && printf '  gio html: OK\n' || printf '  gio html: failed\n'
-    success=1
+    run_cmd "gio mime x-scheme-handler/http $browser" gio mime x-scheme-handler/http "$browser" 2>/dev/null && success=1 || true
+    run_cmd "gio mime x-scheme-handler/https $browser" gio mime x-scheme-handler/https "$browser" 2>/dev/null && success=1 || true
+    run_cmd "gio mime text/html $browser" gio mime text/html "$browser" 2>/dev/null && success=1 || true
   fi
 
   # Method 3: xdg-mime (freedesktop standard)
   if command -v xdg-mime >/dev/null 2>&1; then
-    xdg-mime default "$browser" x-scheme-handler/http 2>/dev/null && printf '  xdg-mime http: OK\n' || printf '  xdg-mime http: failed\n'
-    xdg-mime default "$browser" x-scheme-handler/https 2>/dev/null && printf '  xdg-mime https: OK\n' || printf '  xdg-mime https: failed\n'
-    xdg-mime default "$browser" text/html 2>/dev/null && printf '  xdg-mime html: OK\n' || printf '  xdg-mime html: failed\n'
-    xdg-mime default "$browser" application/xhtml+xml 2>/dev/null && printf '  xdg-mime xhtml: OK\n' || printf '  xdg-mime xhtml: failed\n'
-    success=1
+    run_cmd "xdg-mime default $browser x-scheme-handler/http" xdg-mime default "$browser" x-scheme-handler/http 2>/dev/null && success=1 || true
+    run_cmd "xdg-mime default $browser x-scheme-handler/https" xdg-mime default "$browser" x-scheme-handler/https 2>/dev/null && success=1 || true
+    run_cmd "xdg-mime default $browser text/html" xdg-mime default "$browser" text/html 2>/dev/null && success=1 || true
+    run_cmd "xdg-mime default $browser application/xhtml+xml" xdg-mime default "$browser" application/xhtml+xml 2>/dev/null && success=1 || true
   fi
 
   # Refresh desktop database
   if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
-    printf '  desktop database: refreshed\n'
+    run_cmd "Refreshing desktop database" update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
   fi
 
   if ((success)); then

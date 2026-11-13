@@ -2,10 +2,7 @@
 # Step 35: Git setup and SSH key.
 # Nothing here is fatal: a problem becomes a warning and the setup carries on.
 
-printf '\nSetting up Git (omarchy setup git)...\n'
-if ! omarchy setup git </dev/tty; then
-  warn '"omarchy setup git" failed; run it manually later.'
-fi
+run_cmd 'Setting up Git (omarchy setup git)' _omarchy omarchy setup git || warn '"omarchy setup git" failed; run it manually later.'
 
 SSH_KEY="$HOME/.ssh/id_ed25519"
 SSH_KEY_CREATED=0
@@ -22,6 +19,11 @@ create_ssh_key() {
   if ! command -v ssh-keygen >/dev/null 2>&1; then
     warn 'ssh-keygen not found; skipped SSH key creation.'
     return 1
+  fi
+
+  if _dry_run; then
+    printf '[DRY-RUN] Would prompt for SSH key email and create key at %s\n' "$SSH_KEY"
+    return 0
   fi
 
   default=${SSH_EMAIL:-$(git config --global user.email 2>/dev/null || true)}
