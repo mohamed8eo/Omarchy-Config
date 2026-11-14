@@ -1,36 +1,41 @@
 # shellcheck shell=bash
-# Step 90: summary and restart prompt.
+# PHASE: Summary
+# ABOUT: Shows the result of the setup, any warnings, and offers to restart the PC.
+# PLAN: hide
 
-printf '\n================ Setup summary ================\n'
-printf 'Backups of replaced files: %s\n' "$BACKUP_DIR"
+elapsed=$(format_duration "$SECONDS")
+printf '\n'
+if ((${#WARNINGS[@]} == 0 && ${#FAILED_PLUGINS[@]} == 0)); then
+  ok "Setup completed successfully in $elapsed."
+else
+  note "Setup finished in $elapsed with ${#WARNINGS[@]} warning(s); details below."
+fi
+printf '\n'
+kv 'Backups' "$BACKUP_DIR"
+kv 'Log file' "$LOG_FILE"
 for sibling_file in "${SIBLING_BACKUP_FILES[@]}"; do
   if [[ -e $HOME/.config/$sibling_file-bak ]]; then
-    printf 'Original kept at:          %s\n' "$HOME/.config/$sibling_file-bak"
+    kv 'Original kept' "$HOME/.config/$sibling_file-bak"
   fi
 done
 if ((SSH_KEY_CREATED)); then
-  printf 'New SSH public key:       %s.pub (add it at https://github.com/settings/ssh/new)\n' "$SSH_KEY"
+  kv 'SSH public key' "$SSH_KEY.pub (add it at https://github.com/settings/ssh/new)"
 fi
 if ((LOGIN_SHELL_OK)); then
-  printf 'Fish is your login shell (takes effect on your next login).\n'
+  kv 'Login shell' 'Fish (active after your next login)'
 else
-  printf 'Login shell was NOT changed; run later: chsh -s "$(command -v fish)"\n' >&2
+  kv 'Login shell' 'NOT changed; run later: chsh -s "$(command -v fish)"'
 fi
 if ((${#FAILED_PLUGINS[@]})); then
-  printf 'Plugin steps that failed and were skipped: %s\n' "${FAILED_PLUGINS[*]}" >&2
+  kv 'Skipped plugins' "${FAILED_PLUGINS[*]}"
 fi
 if ((${#WARNINGS[@]})); then
-  printf '\n%d warning(s) during setup:\n' "${#WARNINGS[@]}" >&2
-  for w in "${WARNINGS[@]}"; do printf '  - %s\n' "$w" >&2; done
-elif ((${#FAILED_PLUGINS[@]} == 0)); then
-  printf 'Everything finished without errors.\n'
+  printf '\n    %sWarnings (%d):%s\n' "$C_YELLOW" "${#WARNINGS[@]}" "$C_RESET"
+  for warning_text in "${WARNINGS[@]}"; do
+    printf '      - %s\n' "$warning_text"
+  done
 fi
-printf '===============================================\n\n'
-
-if _dry_run; then
-  printf '[DRY-RUN] Would prompt for restart. Skipping.\n'
-  return 0
-fi
+printf '\n'
 
 # Restart prompt: a Yes/No button when gum (shipped with Omarchy) is available,
 # otherwise a plain y/N question.
@@ -49,11 +54,11 @@ ask_restart() {
 }
 
 if ask_restart; then
-  printf 'Restarting in 5 seconds (press Ctrl+C to cancel)...\n'
+  info 'Restarting in 5 seconds (press Ctrl+C to cancel)...'
   sleep 5
   if ! systemctl reboot; then
-    printf 'Could not restart automatically; please restart the PC manually.\n' >&2
+    warn 'Could not restart automatically; please restart the PC manually.'
   fi
 else
-  printf 'Not restarting. Restart or log out and back in later to apply all changes.\n'
+  info 'Not restarting. Restart or log out and back in later to apply all changes.'
 fi

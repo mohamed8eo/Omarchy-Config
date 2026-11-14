@@ -1,8 +1,13 @@
 # shellcheck shell=bash
-# Step 35: Git setup and SSH key.
-# Nothing here is fatal: a problem becomes a warning and the setup carries on.
+# PHASE: Git and SSH key
+# ABOUT: Runs omarchy setup git, then asks for your email and creates an ed25519 SSH key. An existing key is never overwritten.
 
-run_cmd 'Setting up Git (omarchy setup git)' _omarchy omarchy setup git || warn '"omarchy setup git" failed; run it manually later.'
+info 'Setting up Git (omarchy setup git)...'
+if omarchy setup git </dev/tty; then
+  ok 'Git configured'
+else
+  warn '"omarchy setup git" failed; run it manually later.'
+fi
 
 SSH_KEY="$HOME/.ssh/id_ed25519"
 SSH_KEY_CREATED=0
@@ -13,7 +18,7 @@ SSH_KEY_CREATED=0
 create_ssh_key() {
   local email default attempt max_attempts=3
   if [[ -e $SSH_KEY || -L $SSH_KEY ]]; then
-    printf '\nSSH key already exists, not overwriting: %s\n' "$SSH_KEY"
+    skip "SSH key already exists, not overwriting: $SSH_KEY"
     return 0
   fi
   if ! command -v ssh-keygen >/dev/null 2>&1; then
@@ -21,24 +26,19 @@ create_ssh_key() {
     return 1
   fi
 
-  if _dry_run; then
-    printf '[DRY-RUN] Would prompt for SSH key email and create key at %s\n' "$SSH_KEY"
-    return 0
-  fi
-
   default=${SSH_EMAIL:-$(git config --global user.email 2>/dev/null || true)}
-  printf '\nCreating an SSH key (ed25519)...\n'
+  info 'Creating an ed25519 SSH key...'
   email=''
   for ((attempt = 1; attempt <= max_attempts; attempt++)); do
     read -r -e -i "$default" -p 'Email for the SSH key (leave empty to skip): ' email </dev/tty || email=''
     if [[ -z $email ]]; then
-      printf 'Skipping SSH key creation.\n'
+      skip 'SSH key creation skipped'
       return 0
     fi
     if [[ $email =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]]; then
       break
     fi
-    printf 'That does not look like an email address. Please try again.\n' >&2
+    note 'That does not look like an email address. Please try again.'
     email=''
   done
   if [[ -z $email ]]; then
@@ -52,8 +52,9 @@ create_ssh_key() {
   # it still asks for an optional passphrase.
   if ssh-keygen -t ed25519 -C "$email" -f "$SSH_KEY" </dev/tty; then
     SSH_KEY_CREATED=1
-    printf '\nYour public key (add it at https://github.com/settings/ssh/new):\n'
-    cat "$SSH_KEY.pub"
+    ok "SSH key created: $SSH_KEY"
+    printf '\n    Public key (add it at https://github.com/settings/ssh/new):\n\n'
+    printf '    %s\n\n' "$(cat "$SSH_KEY.pub")"
   else
     warn "ssh-keygen failed; run it later: ssh-keygen -t ed25519 -C \"$email\""
     return 1

@@ -1,19 +1,22 @@
 # shellcheck shell=bash
-# Step 70: Omarchy plugins. A failing plugin is reported and skipped; it never stops the setup.
-
-run_cmd 'Installing Omarchy plugins' true
+# PHASE: Omarchy plugins
+# ABOUT: Installs the qylock-oma, omarchy-spotlight and island plugins and switches the bar to island. A failing plugin is reported and skipped.
 
 # QyLock - Themed lock screen and live backgrounds
-run_optional 'Lock Designs (plugin add)' omarchy plugin add https://github.com/SmoothPixels/lock-designs.git --enable
-if ! _dry_run && run_optional 'Lock Designs (shell explore)' omarchy-shell lock explore; then
-  true
+if run_optional 'Installing qylock-oma' omarchy plugin add https://github.com/mjtiempo/qylock-oma.git --enable --yes; then
+  run_optional 'Syncing QyLock themes' omarchy-shell mark.lock-themes sync || true
 fi
 
-run_optional 'omarchy-spotlight' omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable
+run_optional 'Installing omarchy-spotlight' omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable || true
 
-if run_optional 'island plugin (add)' omarchy plugin add https://github.com/mohamed8eo/island.git; then
-  run_optional 'island bar' omarchy bar use guilhermerisu.island
+if run_optional 'Installing the island plugin' omarchy plugin add https://github.com/mohamed8eo/island.git; then
+  run_optional 'Switching the bar to island' omarchy bar use guilhermerisu.island || true
 fi
 
 # Restart Omarchy shell to load QyLock and other plugins
-run_cmd 'Restarting Omarchy shell' omarchy restart shell || warn 'omarchy restart shell failed; plugins will load after a reboot.'
+info 'Restarting the Omarchy shell...'
+if omarchy restart shell; then
+  ok 'Omarchy shell restarted'
+else
+  warn 'omarchy restart shell failed; the plugins will load after a reboot.'
+fi

@@ -1,49 +1,59 @@
 # shellcheck shell=bash
-# Step 20: system update, dev environments, Codex, and packages from packages.toml.
+# PHASE: Packages and development tools
+# ABOUT: Updates the system, installs Node.js, Go, Python and Rust, Codex, and the packages listed in packages.toml (plus omarchy-fish).
 
-# Helper to run omarchy commands that need /dev/tty for password prompts
-# In dry-run mode, don't use /dev/tty
-_omarchy() {
-  if _dry_run; then
-    "$@"
-  else
-    "$@" </dev/tty
-  fi
-}
-
-run_cmd 'Running omarchy update' _omarchy omarchy update || warn 'omarchy update failed; continuing.'
+info 'Running omarchy update...'
+if omarchy update </dev/tty; then
+  ok 'System updated'
+else
+  warn 'omarchy update failed; skipped it and continued.'
+fi
 
 # Node goes first: the Codex launcher needs the mise-managed Node.
 install_dev_env() {
   local name=$1 tool=$2
   if mise where "$tool" >/dev/null 2>&1; then
-    printf 'Skipping %s (already installed via mise).\n' "$name"
+    skip "$name is already installed (mise)"
   else
-    run_cmd "Installing $name" _omarchy omarchy install dev-env "$name"
+    info "Installing $name..."
+    omarchy install dev-env "$name" </dev/tty
+    ok "$name installed"
   fi
 }
 install_dev_env node node
 install_dev_env go go
 install_dev_env python python
 if command -v rustc >/dev/null || mise where rust >/dev/null 2>&1; then
-  printf 'Skipping rust (already installed).\n'
+  skip 'rust is already installed'
 else
-  run_cmd 'Installing rust' _omarchy omarchy install dev-env rust
+  info 'Installing rust...'
+  omarchy install dev-env rust </dev/tty
+  ok 'rust installed'
 fi
 
-run_cmd 'Installing Codex' _omarchy omarchy install ai chatgpt
+info 'Installing Codex...'
+omarchy install ai chatgpt </dev/tty
+ok 'Codex installed'
 
 if ((${#PACMAN_PACKAGES[@]})); then
-  run_cmd "Installing pacman packages: ${PACMAN_PACKAGES[*]}" _omarchy omarchy pkg add "${PACMAN_PACKAGES[@]}"
+  info "Installing ${#PACMAN_PACKAGES[@]} pacman package(s): ${PACMAN_PACKAGES[*]}"
+  omarchy pkg add "${PACMAN_PACKAGES[@]}" </dev/tty
+  ok 'Pacman packages installed'
 fi
-
 if [[ " ${AUR_PACKAGES[*]:-} " == *" helium-browser-bin "* ]]; then
   # The AUR package verifies Helium's PGP signature, so its signing key must be known.
-  run_cmd 'Importing Helium signing key' retry 3 gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E || warn 'could not import Helium signing key; Helium install may fail.'
+  info 'Importing the Helium signing key...'
+  if retry 3 gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E </dev/tty; then
+    ok 'Helium signing key imported'
+  else
+    warn 'could not import the Helium signing key; the Helium install may fail.'
+  fi
 fi
-
 if ((${#AUR_PACKAGES[@]})); then
-  run_cmd "Installing AUR packages: ${AUR_PACKAGES[*]}" _omarchy omarchy pkg aur add "${AUR_PACKAGES[@]}"
+  info "Installing ${#AUR_PACKAGES[@]} AUR package(s): ${AUR_PACKAGES[*]}"
+  omarchy pkg aur add "${AUR_PACKAGES[@]}" </dev/tty
+  ok 'AUR packages installed'
 fi
-
-run_cmd 'Installing omarchy-fish' _omarchy omarchy pkg add omarchy-fish
+info 'Installing omarchy-fish...'
+omarchy pkg add omarchy-fish </dev/tty
+ok 'omarchy-fish installed'

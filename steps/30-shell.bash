@@ -1,7 +1,6 @@
 # shellcheck shell=bash
-# Step 30: make Fish the login shell.
-# A wrong password is retried, and a failure here never stops the rest of the setup
-# (the manual command is shown in the summary).
+# PHASE: Login shell
+# ABOUT: Makes Fish your login shell. Uses the cached sudo credential, so no extra password is needed; a failure is retried and never stops the setup.
 
 set_login_shell() {
   local fish_path current_shell attempt max_attempts=3
@@ -16,24 +15,20 @@ set_login_shell() {
   fi
   current_shell=$(getent passwd "$USER" | cut -d: -f7)
   if [[ $current_shell == "$fish_path" ]]; then
-    printf 'Login shell is already %s.\n' "$fish_path"
-    LOGIN_SHELL_OK=1
-    return 0
-  fi
-  run_cmd "Changing login shell to $fish_path" true
-  if _dry_run; then
+    skip "Login shell is already $fish_path"
     LOGIN_SHELL_OK=1
     return 0
   fi
   for ((attempt = 1; attempt <= max_attempts; attempt++)); do
-    printf 'Attempt %d/%d...\n' "$attempt" "$max_attempts"
-    if chsh -s "$fish_path" "$USER" </dev/tty; then
-      printf 'Login shell changed to %s.\n' "$fish_path"
+    info "Changing login shell to $fish_path (attempt $attempt of $max_attempts)..."
+    # sudo uses the cached credential, so chsh does not ask for your password again.
+    if sudo chsh -s "$fish_path" "$USER" </dev/tty; then
+      ok "Login shell changed to $fish_path (active after your next login)"
       LOGIN_SHELL_OK=1
       return 0
     fi
     if ((attempt < max_attempts)); then
-      printf 'Wrong password or chsh failed. Please try again.\n' >&2
+      note 'Could not change the login shell (wrong password?). Please try again.'
     fi
   done
   warn "could not change the login shell after $max_attempts attempts; run later: chsh -s $fish_path"
